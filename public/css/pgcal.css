@@ -1,7 +1,173 @@
+/* CSS Variables for Color Customization - Default Values */
+.pgcal-container {
+  --pgcal-primary-color: #4285f4;
+  --pgcal-accent-color: #34a853;
+  --pgcal-primary-hover: #3367d6;
+}
+
+/* FullCalendar Button Color Overrides */
+.pgcal-container .fc-button-primary {
+  background-color: var(--pgcal-primary-color) !important;
+  border-color: var(--pgcal-primary-color) !important;
+  color: white !important;
+}
+
+.pgcal-container .fc-button-primary:hover,
+.pgcal-container .fc-button-primary:focus {
+  background-color: var(--pgcal-primary-hover) !important;
+  border-color: var(--pgcal-primary-hover) !important;
+  color: white !important;
+}
+
+.pgcal-container .fc-button-primary:active,
+.pgcal-container .fc-button-primary.fc-button-active {
+  background-color: var(--pgcal-primary-hover) !important;
+  border-color: var(--pgcal-primary-hover) !important;
+  color: white !important;
+}
+
+.pgcal-container .fc-button-primary:not(:disabled):active,
+.pgcal-container .fc-button-primary:not(:disabled).fc-button-active {
+  background-color: var(--pgcal-primary-hover) !important;
+  border-color: var(--pgcal-primary-hover) !important;
+}
+
+/* FullCalendar Today Button Special Styling */
+.pgcal-container .fc-today-button {
+  background-color: var(--pgcal-primary-color) !important;
+  border-color: var(--pgcal-primary-color) !important;
+}
+
+.pgcal-container .fc-today-button:hover,
+.pgcal-container .fc-today-button:focus {
+  background-color: var(--pgcal-primary-hover) !important;
+  border-color: var(--pgcal-primary-hover) !important;
+}
+
+/* FullCalendar Event Colors */
+.pgcal-container .fc-event {
+  background-color: var(--pgcal-primary-color) !important;
+  border-color: var(--pgcal-primary-color) !important;
+}
+
+.pgcal-container .fc-event-main {
+  color: white !important;
+}
+
+/* FullCalendar List View Event Dots */
+.pgcal-container .fc-list-event-dot {
+  background-color: var(--pgcal-primary-color) !important;
+}
+
+/* FullCalendar Day Grid Today Highlighting */
+.pgcal-container .fc-day-today {
+  background-color: var(--pgcal-accent-color) !important;
+  opacity: 0.3 !important;
+}
+
+/* FullCalendar Day Headers (Mon, Tue, Wed, etc.) */
+.pgcal-container .fc-col-header-cell .fc-col-header-cell-cushion {
+  color: var(--pgcal-primary-color) !important;
+  font-weight: 600 !important;
+}
+
+/* FullCalendar Day Numbers */
+.pgcal-container .fc-daygrid-day-number {
+  color: var(--pgcal-primary-color) !important;
+  font-weight: 500 !important;
+}
+
+/* FullCalendar Today's Date Number - Extra Emphasis */
+.pgcal-container .fc-day-today .fc-daygrid-day-number {
+  color: var(--pgcal-primary-color) !important;
+  font-weight: 700 !important;
+  background-color: var(--pgcal-primary-color) !important;
+  color: white !important;
+  border-radius: 50% !important;
+  width: 28px !important;
+  height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 2px !important;
+}
+
+/* FullCalendar Header Toolbar */
+.pgcal-container .fc-toolbar-title {
+  color: #333 !important;
+}
+
+/* Override any remaining blue colors in FullCalendar */
+.pgcal-container .fc .fc-button-primary:not(:disabled).fc-button-active {
+  background-color: var(--pgcal-primary-hover) !important;
+  border-color: var(--pgcal-primary-hover) !important;
+}
+
+/* Force override any blue links or text in list view */
+.pgcal-container .fc-list-table a {
+  color: var(--pgcal-primary-color) !important;
+}
+
+.pgcal-container .fc-list-table .fc-list-event-graphic a {
+  color: var(--pgcal-primary-color) !important;
+}
+
+/* Nuclear option: Override ALL FullCalendar blue colors */
+.pgcal-container .fc *[style*="color: rgb(66, 133, 244)"],
+.pgcal-container .fc *[style*="color:#4285f4"],
+.pgcal-container .fc *[style*="color: #4285f4"],
+.pgcal-container .fc a[href*="google"],
+.pgcal-container .fc .fc-h-event .fc-event-main-frame,
+.pgcal-container .fc .fc-daygrid-event-harness a,
+.pgcal-container .fc .fc-list-event-harness a,
+.pgcal-container .fc td a,
+.pgcal-container .fc th a {
+  color: var(--pgcal-primary-color) !important;
+}
+
+/* Specific targeting of date/time elements that might be missed */
+.pgcal-container .fc-list-table tbody tr td:first-child,
+.pgcal-container .fc-list-table tbody tr td:first-child *,
+.pgcal-container .fc-list-table .fc-widget-content:first-child,
+.pgcal-container .fc-list-table .fc-widget-content:first-child *,
+.pgcal-container .fc .fc-content,
+.pgcal-container .fc .fc-time,
+.pgcal-container .fc .fc-date {
+  color: var(--pgcal-primary-color) !important;
+}
+
+/* Last resort: target any remaining blue text */
+.pgcal-container .fc [style*="blue"],
+.pgcal-container .fc [color="#4285f4"],
+.pgcal-container .fc [color="blue"] {
+  color: var(--pgcal-primary-color) !important;
+}
+
+/* Calendar container containment and responsive behavior */
+.pgcal-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+}
+
+/* Ensure FullCalendar respects container boundaries */
+.pgcal-container .fc {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
 /* Remove empty bars above and below calendar */
 .pgcal-container table {
   margin: 0px;
   padding: 0px;
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+  box-sizing: border-box !important;
 }
 
 /* .fc-day-past.fc-day-grid-event, */
@@ -24,15 +190,626 @@
   white-space: normal;
 }
 
+/* List view event improvements for better text visibility */
+.pgcal-container .fc-list-event {
+  position: relative;
+  background-color: white !important;
+  border-radius: 4px !important;
+  margin: 2px 0 !important;
+}
+
+/* FullCalendar toolbar containment */
+.pgcal-container .fc-toolbar {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  flex-wrap: wrap !important;
+}
+
+.pgcal-container .fc-toolbar-chunk {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* Calendar view area containment */
+.pgcal-container .fc-view-harness {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* List event content improvements */
+.pgcal-container .fc-list-event-title {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  overflow: visible !important;
+  text-overflow: initial !important;
+  max-width: none !important;
+  line-height: 1.4 !important;
+  padding: 4px 0 !important;
+  color: var(--pgcal-primary-color) !important;
+}
+
+.pgcal-container .fc-list-event-time {
+  white-space: nowrap !important;
+  padding: 4px 8px 4px 0 !important;
+  min-width: 80px !important;
+  color: var(--pgcal-primary-color) !important;
+}
+
+/* Simple approach: just add enough padding to prevent dot overlap */
+.fc-list-table .fc-list-event-time {
+  padding-left: 16px !important;
+}
+
+/* Position the dot with absolute positioning relative to its cell */
+.pgcal-container .fc-list-event .fc-list-event-dot {
+  position: absolute !important;
+  left: 4px !important;
+  margin-top: 4px !important;
+  background-color: var(--pgcal-primary-color) !important;
+  border: none !important;
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+}
+
+/* Hide dots for past events in list view */
+.pgcal-container .fc-event-past .fc-list-event-dot {
+  display: none !important;
+}
+
+/* Make the dot's parent cell relative for absolute positioning */
+.fc-list-table td:first-child {
+  position: relative !important;
+}
+
+/* Hover tooltip for truncated text in list view */
+.fc-list-event:hover .fc-list-event-title {
+  position: relative;
+  z-index: 1000;
+}
+
+.fc-list-event:hover .fc-list-event-title::after {
+  content: attr(title);
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.3;
+  white-space: normal;
+  word-wrap: break-word;
+  max-width: 280px;
+  min-width: 200px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1001;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-5px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fc-list-event:hover .fc-list-event-title[title]:not([title=""]):after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Better list table responsive behavior */
+.fc-list-table {
+  table-layout: auto !important;
+  width: 100% !important;
+}
+
+.fc-list-table td {
+  vertical-align: top !important;
+  padding: 8px 4px !important;
+}
+
+.fc-list-table .fc-list-event-time {
+  width: auto !important;
+  min-width: 70px !important;
+}
+
+/* Scrollable list view for long event lists */
+.fc-list {
+  max-height: 600px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  border: 1px solid #ddd !important;
+  border-radius: 4px !important;
+}
+
+/* Custom scrollbar styling */
+.fc-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.fc-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.fc-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.fc-list::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Ensure list header is sticky when scrolling */
+.pgcal-container .fc-list-sticky .fc-list-day-cushion {
+  position: sticky !important;
+  top: 0 !important;
+  background: #f8f9fa !important;
+  border-bottom: 2px solid #dee2e6 !important;
+  z-index: 10 !important;
+  padding: 8px 12px !important;
+  font-weight: 600 !important;
+  color: var(--pgcal-primary-color) !important;
+}
+
+/* FullCalendar List View Day Headers */
+.pgcal-container .fc-list-day-cushion {
+  color: var(--pgcal-primary-color) !important;
+  font-weight: 600 !important;
+}
+
+/* FullCalendar List View Individual Event Dates - Comprehensive Coverage */
+.pgcal-container .fc-list-event .fc-list-event-date,
+.pgcal-container .fc-list-event-date,
+.pgcal-container .fc-daygrid-event .fc-event-time,
+.pgcal-container .fc-list-table .fc-list-event-graphic,
+.pgcal-container .fc-list-event-graphic,
+.pgcal-container .fc-list-event td:first-child,
+.pgcal-container .fc-list-table td:first-child a,
+.pgcal-container .fc-list-table .fc-list-event-time a,
+.pgcal-container .fc-list-event-time a,
+.pgcal-container .fc-list-day-side-text,
+.pgcal-container .fc-list-day-text {
+  color: var(--pgcal-primary-color) !important;
+}
+
+/* Fade indicator for scrollable content */
+.fc-list::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(transparent, rgba(255, 255, 255, 0.8));
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Remove fade when scrolled to bottom */
+.fc-list.scrolled-to-bottom::after {
+  display: none;
+}
+
+/* Smooth scrolling */
+.fc-list {
+  scroll-behavior: smooth;
+}
+
+/* Handle very narrow parent containers */
+.pgcal-container {
+  min-height: 300px !important;
+}
+
+/* Constrained container adaptations */
+@media (max-width: 400px) {
+  .pgcal-container .fc-toolbar-chunk {
+    font-size: 12px !important;
+  }
+  
+  .pgcal-container .fc-button {
+    padding: 4px 6px !important;
+    font-size: 11px !important;
+  }
+  
+  .pgcal-container .fc-toolbar-title {
+    font-size: 16px !important;
+  }
+}
+
+/* Very constrained containers (sidebars, widgets, etc.) */
+.pgcal-container[style*="width"] {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Force calendar to respect any parent width constraints */
+.pgcal-container * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Tooltip/Modal visibility fixes */
+.tippy-box {
+  z-index: 9999 !important;
+  position: fixed !important;
+}
+
+.tippy-content {
+  background: white !important;
+  border: 1px solid #ddd !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  padding: 15px !important;
+  max-width: 400px !important;
+  min-width: 250px !important;
+}
+
+.tippy-content h2 {
+  margin: 0 0 10px 0 !important;
+  font-size: 18px !important;
+  color: #333 !important;
+  font-weight: 600 !important;
+}
+
+.tippy-content p {
+  margin: 5px 0 !important;
+  color: #666 !important;
+  font-size: 14px !important;
+  line-height: 1.4 !important;
+}
+
+.tippy-content .toolloc {
+  margin-top: 10px !important;
+  padding-top: 10px !important;
+  border-top: 1px solid #eee !important;
+}
+
+.tippy-content .button {
+  display: inline-block !important;
+  padding: 6px 12px !important;
+  background: var(--pgcal-primary-color) !important;
+  color: white !important;
+  text-decoration: none !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
+.tippy-content .button:hover {
+  background: var(--pgcal-primary-hover) !important;
+}
+
+/* Ensure tooltip appears above everything */
+.tippy-popper {
+  z-index: 9999 !important;
+}
+
+/* Light theme specific fixes */
+.tippy-box[data-theme~='light'] {
+  background-color: white !important;
+  border: 1px solid #ddd !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  z-index: 9999 !important;
+}
+
+.tippy-box[data-theme~='light'] .tippy-content {
+  background: white !important;
+  color: #333 !important;
+  padding: 15px !important;
+}
+
+.tippy-box[data-theme~='light'] .tippy-arrow {
+  color: white !important;
+}
+
+/* Container overflow fixes for tooltips */
+.pgcal-container {
+  position: relative !important;
+  overflow: visible !important;
+}
+
+/* Ensure tooltips aren't clipped by parent containers */
+body .tippy-box {
+  position: fixed !important;
+  z-index: 999999 !important;
+}
+
 .pgcal-branding {
   color: grey;
   font-size: 70%;
   float: right;
+  clear: both;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 767px) {
+  /* Mobile container strict containment */
+  .pgcal-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+  }
+  
   .fc-toolbar.fc-header-toolbar {
     display: flex;
     flex-direction: column;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
+  
+  /* Ensure toolbar buttons don't overflow */
+  .fc-toolbar-chunk {
+    width: 100% !important;
+    max-width: 100% !important;
+    justify-content: center !important;
+    margin: 2px 0 !important;
+  }
+  
+  .fc-button-group {
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+  
+  /* Mobile list view improvements */
+  .fc-list-event-title {
+    font-size: 14px !important;
+    line-height: 1.3 !important;
+    padding: 6px 0 !important;
+  }
+  
+  .fc-list-event-time {
+    font-size: 12px !important;
+    min-width: 60px !important;
+    padding: 6px 6px 6px 0 !important;
+  }
+  
+  .fc-list-table td {
+    padding: 6px 2px !important;
+  }
+  
+  /* Enhanced mobile hover tooltip */
+  .fc-list-event:hover .fc-list-event-title::after {
+    left: -10px;
+    right: -10px;
+    max-width: none;
+    font-size: 14px;
+  }
+  
+  /* Mobile list view scrolling */
+  .fc-list {
+    max-height: 400px !important;
+  }
+  
+  /* Smaller scrollbar on mobile */
+  .fc-list::-webkit-scrollbar {
+    width: 6px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Extra small screens - stack time above title */
+  .fc-list-table .fc-list-event-time {
+    display: block !important;
+    width: 100% !important;
+    min-width: auto !important;
+    font-weight: 600 !important;
+    color: #666 !important;
+    padding: 4px 0 2px 0 !important;
+  }
+  
+  .fc-list-table .fc-list-event-title {
+    display: block !important;
+    width: 100% !important;
+    padding: 2px 0 6px 0 !important;
+  }
+  
+  .fc-list-table tr {
+    display: block !important;
+    border-bottom: 1px solid #eee !important;
+    margin-bottom: 8px !important;
+  }
+  
+  .fc-list-table td {
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+}
+
+/* Google Map Title Styling */
+.pgcal-map-title {
+  font-size: 32px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 15px;
+  color: #333;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Google Map Styling */
+.pgcal-map-container {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: #f5f5f5;
+  width: 100%;
+}
+
+.pgcal-map-container .gm-style {
+  border-radius: 4px;
+}
+
+/* Map controls styling - General override */
+.pgcal-map-container .gm-control-active {
+  background-color: var(--pgcal-primary-color) !important;
+  color: white !important;
+}
+
+/* Style specific Google Maps control buttons to match Today/Month buttons */
+/* Zoom In button */
+.pgcal-map-container .gm-control-active[title*="Zoom in"],
+/* Zoom Out button */  
+.pgcal-map-container .gm-control-active[title*="Zoom out"],
+/* Street View/Map Type control button */
+.pgcal-map-container .gm-control-active[title*="Show street map"],
+.pgcal-map-container .gm-control-active[title*="Show satellite"],
+.pgcal-map-container .gm-control-active[title*="Street View"],
+/* Fullscreen toggle button */
+.pgcal-map-container .gm-control-active[title*="Toggle fullscreen"],
+.pgcal-map-container .gm-control-active[title*="Exit fullscreen"] {
+  background-color: white !important;
+  border: 2px solid #fff !important;
+  border-radius: 3px !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,.3) !important;
+  cursor: pointer !important;
+  font-family: Roboto,Arial,sans-serif !important;
+  color: #333 !important;
+}
+
+/* Hover effects for the styled buttons */
+.pgcal-map-container .gm-control-active[title*="Zoom in"]:hover,
+.pgcal-map-container .gm-control-active[title*="Zoom out"]:hover,
+.pgcal-map-container .gm-control-active[title*="Show street map"]:hover,
+.pgcal-map-container .gm-control-active[title*="Show satellite"]:hover,
+.pgcal-map-container .gm-control-active[title*="Street View"]:hover,
+.pgcal-map-container .gm-control-active[title*="Toggle fullscreen"]:hover,
+.pgcal-map-container .gm-control-active[title*="Exit fullscreen"]:hover {
+  background-color: #f8f9fa !important;
+  border-color: #dadce0 !important;
+}
+
+
+
+/* Map navigation controls - enhanced styling */
+.pgcal-map-container .gm-control-active[style*="display: flex"] {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+/* Today button with date styling */
+.pgcal-map-container .gm-control-active[style*="min-width: 120px"] {
+  background-color: white !important;
+  border-color: #fff !important;
+  font-size: 13px !important;
+  letter-spacing: 0.2px;
+}
+
+/* Arrow buttons hover effects */
+.pgcal-map-container .gm-control-active[style*="font-weight: bold"]:hover {
+  background-color: var(--pgcal-primary-hover) !important;
+  transform: scale(1.05);
+  transition: all 0.2s ease;
+}
+
+/* Month button responsive width */
+.pgcal-map-container .gm-control-active[style*="min-width: 100px"] {
+  flex: 0 0 auto;
+}
+
+/* Zoom display in top-right styling */
+.pgcal-map-container .gm-control-active[style*="min-width: 50px"] {
+  position: relative;
+  opacity: 0.85;
+  transition: opacity 0.3s ease;
+}
+
+.pgcal-map-container .gm-control-active[style*="min-width: 50px"]:hover {
+  opacity: 1;
+}
+
+/* Map legend styling */
+[id^="pgcal-legend-"] {
+  font-family: Roboto, Arial, sans-serif;
+}
+
+[id^="pgcal-legend-"] > div:first-child {
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+[id^="pgcal-legend-"] svg {
+  flex-shrink: 0;
+}
+
+
+
+
+
+@media (max-width: 767px) {
+  .pgcal-map-container {
+    margin-top: 15px;
+    border-radius: 2px;
+  }
+  
+  /* Adjust map height for mobile if needed */
+  .pgcal-map-container[style*="400px"] {
+    height: 300px !important;
+  }
+  
+  /* Smaller radius toggle on mobile */
+  .pgcal-map-container .gm-style-cc {
+    font-size: 14px !important;
+  }
+  
+  /* Mobile navigation adjustments */
+  .pgcal-map-container .gm-control-active[style*="display: flex"] {
+    gap: 4px !important;
+    margin: 4px 0 8px !important;
+    flex-wrap: wrap;
+  }
+  
+  /* Smaller navigation buttons on mobile */
+  .pgcal-map-container .gm-control-active[style*="line-height: 32px"] {
+    font-size: 12px !important;
+    line-height: 28px !important;
+    padding: 0 8px !important;
+  }
+  
+  /* Today button with date on mobile */
+  .pgcal-map-container .gm-control-active[style*="min-width: 120px"] {
+    min-width: 100px !important;
+    font-size: 11px !important;
+  }
+  
+  /* Month button mobile adjustments */
+  .pgcal-map-container .gm-control-active[style*="min-width: 100px"] {
+    min-width: 80px !important;
+  }
+  
+  /* Zoom display mobile adjustments */
+  .pgcal-map-container .gm-control-active[style*="min-width: 50px"] {
+    min-width: 40px !important;
+    font-size: 10px !important;
+    line-height: 20px !important;
+  }
+  
+  /* Map legend mobile adjustments */
+  [id^="pgcal-legend-"] {
+    font-size: 12px !important;
+    padding: 10px 12px !important;
+  }
+  
+  [id^="pgcal-legend-"] > div:last-child {
+    gap: 12px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  
+  [id^="pgcal-legend-"] svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+  
+
 }

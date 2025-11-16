@@ -29,9 +29,7 @@ function pgcal_tippyRender(info, currCal) {
     pgcal_urlify(info.event.extendedProps.description)
   );
 
-  toolContent += `<div class="toolloc">${pgcal_mapify(
-    info.event.extendedProps.location
-  )} ${pgcal_addToGoogle(info.event.url)}</div>`;
+  toolContent += `<div class="toolloc">${pgcal_addToGoogle(info.event.url)}</div>`;
 
   tippy(info.el, {
     trigger: "click",

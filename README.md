@@ -85,6 +85,12 @@ Migrating from global setting for individual calendar styling. Whether the float
 `no_link="true"` \
 Migrating from global setting for individual calendar styling. Whether to disable link to calendar.google.com on click.
 
+`primary_color="blue"` or `primary_color="#4285f4"` \
+Sets the primary color for the calendar theme. Accepts color names (`blue`, `red`, `green`, `purple`, `orange`, `teal`, `pink`, `yellow`, `cyan`, `indigo`, `lime`, `amber`) or hex values (`#4285f4`). Defaults to `blue` (`#4285f4`).
+
+`accent_color="green"` or `accent_color="#34a853"` \
+Sets the accent color for the calendar theme. Accepts color names or hex values (same options as `primary_color`). Defaults to `green` (`#34a853`).
+
 `fc_args` = JSON string ((EXPERIMENTAL)) \
 Allows you to override or impliment just about any FullCalendar argument (with some exception). For example: `fc_args='{"weekNumbers":"true", "eventTextColor":"red"}'`
 

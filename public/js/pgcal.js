@@ -56,9 +56,13 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
   const toolbarLeft = pgcal_is_truthy(pgcalSettings["show_today_button"])
     ? "prev,next today"
     : "prev,next";
-  const toolbarCenter = pgcal_is_truthy(pgcalSettings["show_title"])
-    ? "title"
-    : "";
+  // Always show the month name above the calendar in Month view
+  let toolbarCenter;
+  if (views.initial === "dayGridMonth" || (pgcalSettings["force_month_title"] === "true")) {
+    toolbarCenter = "title";
+  } else {
+    toolbarCenter = pgcal_is_truthy(pgcalSettings["show_title"]) ? "title" : "";
+  }
   const toolbarRight = views.length > 1 ? views.all.join(",") : "";
 
   let selectedView = views.initial;
@@ -100,6 +104,25 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
       left: toolbarLeft,
       center: toolbarCenter,
       right: toolbarRight,
+    },
+
+    viewDidMount: function(arg) {
+      // Ensure the month name is always shown above the calendar in Month view
+      if (arg.view.type === "dayGridMonth") {
+        const calendarApi = arg.view.calendar;
+        calendarApi.setOption("headerToolbar", {
+          left: toolbarLeft,
+          center: "title",
+          right: toolbarRight
+        });
+      } else {
+        const calendarApi = arg.view.calendar;
+        calendarApi.setOption("headerToolbar", {
+          left: toolbarLeft,
+          center: toolbarCenter,
+          right: toolbarRight
+        });
+      }
     },
 
     eventDidMount: function (info) {

@@ -42,7 +42,7 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
   const currCal = `pgcalendar-${pgcalSettings["id_hash"]}`;
   const calendarEl = document.getElementById(currCal);
   if (!calendarEl) return; // Exit if no calendar container
-  
+
   calendarEl.innerHTML = "";
   let width = window.innerWidth;
 
@@ -106,7 +106,7 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
       right: toolbarRight,
     },
 
-    viewDidMount: function(arg) {
+    viewDidMount: function (arg) {
       // Ensure the month name is always shown above the calendar in Month view
       if (arg.view.type === "dayGridMonth") {
         const calendarApi = arg.view.calendar;
@@ -178,7 +178,7 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
 function pgcal_render_map(pgcalSettings, globalSettings) {
   const mapId = `pgcalmap-${pgcalSettings["id_hash"]}`;
   const mapEl = document.getElementById(mapId);
-  
+
   if (!mapEl) return;
 
   // Check if Google Maps API is already loaded or loading
@@ -193,20 +193,20 @@ function pgcal_render_map(pgcalSettings, globalSettings) {
     // Need to load
     window.pgcal_maps_loading = true;
     window.pgcal_maps_callbacks = [() => pgcal_createMap(mapId, pgcalSettings, globalSettings)];
-    
+
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${globalSettings["google_api"]}&callback=pgcal_mapsApiLoaded&loading=async`;
     script.async = true;
     script.defer = true;
-    
+
     // Global callback for when Maps API loads
-    window.pgcal_mapsApiLoaded = function() {
+    window.pgcal_mapsApiLoaded = function () {
       window.pgcal_maps_loading = false;
       const callbacks = window.pgcal_maps_callbacks || [];
       callbacks.forEach(callback => callback());
       window.pgcal_maps_callbacks = [];
     };
-    
+
     document.head.appendChild(script);
   }
 }
@@ -215,12 +215,15 @@ function pgcal_render_map(pgcalSettings, globalSettings) {
  * Create and initialize the Google Map
  */
 function pgcal_createMap(mapId, pgcalSettings, globalSettings) {
+  // Store settings globally for onclick handlers
+  window.pgcal_current_settings = pgcalSettings;
+  
   const mapEl = document.getElementById(mapId);
   if (!mapEl) return;
 
   // Default location
   const defaultLocation = { lat: 40.7128, lng: -74.0060 }; // New York City
-  
+
   const map = new google.maps.Map(mapEl, {
     zoom: parseInt(pgcalSettings["map_zoom"] || 10),
     center: defaultLocation,
@@ -277,9 +280,9 @@ function pgcal_setUserLocationCenter(map, pgcalSettings) {
           lat: position.coords.latitude,
           lng: position.coords.longitude
         };
-        
+
         map.setCenter(userLocation);
-        
+
         // Add a marker for user's location
         const userMarker = new google.maps.Marker({
           position: userLocation,
@@ -353,10 +356,10 @@ function pgcal_setMapCenter(map, centerValue) {
  */
 function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
   console.log('pgcal_addEventMarkersToMap called'); // DEBUG
-  
+
   const markers = window[`pgcal_map_markers_${pgcalSettings["id_hash"]}`] || [];
   const circles = window[`pgcal_map_circles_${pgcalSettings["id_hash"]}`] || [];
-  
+
   // Clear existing markers and circles
   markers.forEach(marker => marker.setMap(null));
   circles.forEach(circle => circle.setMap(null));
@@ -377,13 +380,13 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
       const currentTime = new Date();
       const eventEndTime = event.end || event.start;
       const isEventPast = eventEndTime < currentTime;
-      
+
       // Geocode the location
       geocoder.geocode({ address: location }, (results, status) => {
         if (status === 'OK' && results[0]) {
           hasLocations = true;
           const position = results[0].geometry.location;
-          
+
           const marker = new google.maps.Marker({
             position: position,
             map: map,
@@ -403,10 +406,23 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
           // Generate calendar URLs for "Add to Calendar"
           const calendarUrls = pgcal_generateCalendarUrls(event, location);
 
+          // Extract the FULL event ID from the URL (eid parameter has the complete ID)
+          // Fallback to event.id only if URL extraction fails (event.id is often truncated)
+          let eventId = '';
+          if (event.url && event.url.includes('eid=')) {
+            eventId = event.url.split('eid=')[1]?.split('&')[0] || '';
+          }
+          if (!eventId) {
+            eventId = event.id || '';
+          }
+          console.log('🔍 The new Full event ID extracted:', eventId);
+          console.log('🔗 Event URL:', event.url);
+          console.log('📝 event.id (short):', event.id);
+
           // Create info window
           const infoWindow = new google.maps.InfoWindow({
             content: `
-              <div id="popup-${event.id}" style="max-width: 400px; min-width: 350px; ${isEventPast ? 'opacity: 0.75; background-color: #f9f9f9;' : ''}" class="pgcal-popup-content">
+              <div id="popup-${eventId}" style="max-width: 400px; min-width: 350px; ${isEventPast ? 'opacity: 0.75; background-color: #f9f9f9;' : ''}" class="pgcal-popup-content">
                 <h3 style="margin: 0 0 10px 0; font-size: 20px; line-height: 1.3; color: ${isEventPast ? '#888' : '#333'}; font-weight: 600; border-bottom: 1px solid #eee; padding-bottom: 6px;">
                   ${event.title}
                   ${isEventPast ? '<span style="background: #ff6b6b; color: white; font-size: 13px; padding: 2px 6px; border-radius: 10px; margin-left: 8px; font-weight: normal;">PAST</span>' : ''}
@@ -414,11 +430,11 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
                 <p style="margin: 6px 0; color: ${isEventPast ? '#888' : '#666'}; font-size: 16px; line-height: 1.5;">
                   <strong style="color: ${isEventPast ? '#ff6b6b' : '#4285f4'}; font-size: 16px;">Date:</strong> ${event.start.toLocaleDateString()}
                 </p>
-                ${event.start.getHours() !== 0 || event.start.getMinutes() !== 0 ? 
-                  `<p style="margin: 6px 0; color: ${isEventPast ? '#888' : '#666'}; font-size: 16px; line-height: 1.5;">
-                    <strong style="color: ${isEventPast ? '#ff6b6b' : '#4285f4'}; font-size: 16px;">Time:</strong> ${event.start.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})}
+                ${event.start.getHours() !== 0 || event.start.getMinutes() !== 0 ?
+                `<p style="margin: 6px 0; color: ${isEventPast ? '#888' : '#666'}; font-size: 16px; line-height: 1.5;">
+                    <strong style="color: ${isEventPast ? '#ff6b6b' : '#4285f4'}; font-size: 16px;">Time:</strong> ${event.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                   </p>` : ''
-                }
+              }
                 <p style="margin: 6px 0 0 0; color: ${isEventPast ? '#888' : '#666'}; font-size: 16px; line-height: 1.5;">
                   <strong style="color: ${isEventPast ? '#ff6b6b' : '#4285f4'}; font-size: 16px;">Location:</strong> ${location}
                 </p>
@@ -432,18 +448,21 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
                 ` : ''}
                 ${pgcalSettings["show_add_to_calendar"] === "true" ? `
                   <div style="margin: 12px 0 8px 0;">
-                    <a href="${calendarUrls.google}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #4285f4; color: white; text-decoration: none; border-radius: 4px; font-size: 16px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Add to Calendar</a>
+                    <button class="pgcal-add-btn" data-event-id="${eventId}" data-event-url="${event.url || ''}" data-location="${location}" data-event-title="${event.title}" style="display: inline-block; padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background 0.3s;">Add to Calendar</button>
+                    <span class="pgcal-add-status" style="display: none; margin-left: 10px; font-size: 14px;"></span>
                   </div>
                 ` : ''}
                 ${isEventPast ? '<p style="margin: 8px 0 0 0; font-size: 14px; line-height: 1.5; color: #ff6b6b; font-style: italic;">This event has already occurred</p>' : ''}
               </div>
             `,
             pixelOffset: new google.maps.Size(0, -10)
-          });          // Show info window by default if enabled
+          });
+
+          // Show info window by default if enabled
           if (pgcalSettings["popups_open"] === "true") {
             infoWindow.open(map, marker);
           }
-          
+
           // Allow clicking to toggle
           marker.addListener('click', () => {
             if (infoWindow.getMap()) {
@@ -460,7 +479,7 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
           if (pgcalSettings["show_radius"] === "true") {
             const radiusMiles = parseFloat(pgcalSettings["radius_miles"] || 25);
             const radiusMeters = radiusMiles * 1609.34; // Convert miles to meters
-            
+
             const circle = new google.maps.Circle({
               strokeColor: '#4285f4',
               strokeOpacity: 0.6,
@@ -471,7 +490,7 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
               center: position,
               radius: radiusMeters
             });
-            
+
             circles.push(circle);
           }
 
@@ -515,14 +534,14 @@ function pgcal_addRadiusToggle(map, pgcalSettings) {
   toggleButton.addEventListener('click', () => {
     const circles = window[`pgcal_map_circles_${pgcalSettings["id_hash"]}`] || [];
     const isVisible = window[`pgcal_radius_visible_${pgcalSettings["id_hash"]}`];
-    
+
     circles.forEach(circle => {
       circle.setVisible(!isVisible);
     });
-    
+
     window[`pgcal_radius_visible_${pgcalSettings["id_hash"]}`] = !isVisible;
-    toggleButton.textContent = isVisible ? 
-      `Show ${pgcalSettings["radius_miles"]}mi Radius` : 
+    toggleButton.textContent = isVisible ?
+      `Show ${pgcalSettings["radius_miles"]}mi Radius` :
       `Hide ${pgcalSettings["radius_miles"]}mi Radius`;
   });
 
@@ -567,15 +586,15 @@ function pgcal_generateCalendarUrls(event, location) {
   const title = encodeURIComponent(event.title);
   const details = encodeURIComponent(event.extendedProps.description || '');
   const loc = encodeURIComponent(location);
-  
+
   // Format dates for calendar URLs
   const startDate = event.start;
   const endDate = event.end || new Date(startDate.getTime() + (60 * 60 * 1000)); // Default 1 hour if no end
-  
+
   // Check if it's an all-day event
-  const isAllDay = (startDate.getHours() === 0 && startDate.getMinutes() === 0 && 
-                   endDate.getHours() === 0 && endDate.getMinutes() === 0);
-  
+  const isAllDay = (startDate.getHours() === 0 && startDate.getMinutes() === 0 &&
+    endDate.getHours() === 0 && endDate.getMinutes() === 0);
+
   let startStr, endStr;
   if (isAllDay) {
     // All-day event format: YYYYMMDD
@@ -588,7 +607,7 @@ function pgcal_generateCalendarUrls(event, location) {
     startStr = startDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
     endStr = endDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   }
-  
+
   return {
     google: `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startStr}/${endStr}&details=${details}&location=${loc}`,
     outlook: `https://outlook.live.com/calendar/0/deeplink/compose?subject=${title}&startdt=${startDate.toISOString()}&enddt=${endDate.toISOString()}&body=${details}&location=${loc}`,
@@ -654,7 +673,7 @@ function pgcal_addMapLegend(mapId, pgcalSettings) {
   futureEventItem.style.cssText = 'display: flex; align-items: center; gap: 6px;';
   futureEventItem.innerHTML = `
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#4285f4">
-      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
     </svg>
     <span style="color: #333;">Upcoming Events</span>
   `;
@@ -664,7 +683,7 @@ function pgcal_addMapLegend(mapId, pgcalSettings) {
   pastEventItem.style.cssText = 'display: flex; align-items: center; gap: 6px;';
   pastEventItem.innerHTML = `
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#ff6b6b">
-      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
       <text x="12" y="16" font-family="Arial" font-size="8" fill="white" text-anchor="middle">✓</text>
     </svg>
     <span style="color: #333;">Past Events</span>
@@ -694,11 +713,11 @@ function pgcal_addMapLegend(mapId, pgcalSettings) {
   // Add legend items based on enabled features
   legendItems.appendChild(futureEventItem);
   legendItems.appendChild(pastEventItem);
-  
+
   if (pgcalSettings["use_user_location"] === "true") {
     legendItems.appendChild(userLocationItem);
   }
-  
+
   if (pgcalSettings["show_radius"] === "true") {
     legendItems.appendChild(radiusItem);
   }
@@ -745,12 +764,12 @@ function pgcal_addDateNavigation(map, pgcalSettings, globalSettings) {
   // Update today button display function
   function updateTodayButton() {
     const now = new Date();
-    const options = { 
+    const options = {
       month: 'short',
       day: 'numeric'
     };
     const isToday = (currentDate.toDateString() === now.toDateString());
-    
+
     if (isToday) {
       todayButton.textContent = `Today (${now.toLocaleDateString('en-US', options)})`;
       todayButton.title = 'Show events from today onwards (not limited to just today)';
@@ -810,7 +829,7 @@ function pgcal_addDateNavigation(map, pgcalSettings, globalSettings) {
   function updateMonthButton() {
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'];
-    
+
     // Always show the actual month name, never "This Month"
     monthButton.textContent = monthNames[currentDate.getMonth()];
     monthButton.title = `Show events from ${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()} only`;
@@ -835,7 +854,7 @@ function pgcal_addDateNavigation(map, pgcalSettings, globalSettings) {
     prevButton.style.color = 'black';
     nextButton.style.backgroundColor = 'white';
     nextButton.style.color = 'black';
-    
+
     // Highlight active button
     if (activeButton) {
       activeButton.style.backgroundColor = '#4285f4';
@@ -855,7 +874,7 @@ function pgcal_addDateNavigation(map, pgcalSettings, globalSettings) {
   function setMonthOnlyRange(targetDate) {
     const firstOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
     const lastOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59);
-    
+
     // Store the specific month range in pgcalSettings
     pgcalSettings["month_only_mode"] = "true";
     pgcalSettings["month_start"] = firstOfMonth.toISOString();
@@ -874,18 +893,18 @@ function pgcal_addDateNavigation(map, pgcalSettings, globalSettings) {
     // Reset to actual today
     window[`pgcal_current_date_${pgcalSettings["id_hash"]}`] = new Date();
     const newCurrentDate = window[`pgcal_current_date_${pgcalSettings["id_hash"]}`];
-    
+
     // Clear month-only mode and set to today onwards
     clearMonthOnlyMode();
     pgcalSettings["past_days_limit"] = "0";
-    
+
     // Update displays
     updateTodayButton();
     updateMonthButton();
-    
+
     // Refresh map markers
     pgcal_refreshMapMarkers(map, pgcalSettings, globalSettings);
-    
+
     // Update button styles
     updateButtonStyles(todayButton);
   });
@@ -894,17 +913,17 @@ function pgcal_addDateNavigation(map, pgcalSettings, globalSettings) {
   prevButton.addEventListener('click', () => {
     // Move to previous month
     currentDate.setMonth(currentDate.getMonth() - 1);
-    
+
     // Set month-only mode for this specific month
     setMonthOnlyRange(currentDate);
-    
+
     // Update displays
     updateTodayButton();
     updateMonthButton();
-    
+
     // Refresh map markers
     pgcal_refreshMapMarkers(map, pgcalSettings, globalSettings);
-    
+
     // Update button styles
     updateButtonStyles(monthButton);
   });
@@ -913,17 +932,17 @@ function pgcal_addDateNavigation(map, pgcalSettings, globalSettings) {
   nextButton.addEventListener('click', () => {
     // Move to next month
     currentDate.setMonth(currentDate.getMonth() + 1);
-    
+
     // Set month-only mode for this specific month
     setMonthOnlyRange(currentDate);
-    
+
     // Update displays
     updateTodayButton();
     updateMonthButton();
-    
+
     // Refresh map markers
     pgcal_refreshMapMarkers(map, pgcalSettings, globalSettings);
-    
+
     // Update button styles
     updateButtonStyles(monthButton);
   });
@@ -933,17 +952,17 @@ function pgcal_addDateNavigation(map, pgcalSettings, globalSettings) {
     // Reset to current month
     window[`pgcal_current_date_${pgcalSettings["id_hash"]}`] = new Date();
     const newCurrentDate = window[`pgcal_current_date_${pgcalSettings["id_hash"]}`];
-    
+
     // Set month-only mode for current month
     setMonthOnlyRange(newCurrentDate);
-    
+
     // Update displays
     updateTodayButton();
     updateMonthButton();
-    
+
     // Refresh map markers
     pgcal_refreshMapMarkers(map, pgcalSettings, globalSettings);
-    
+
     // Update button styles
     updateButtonStyles(monthButton);
   });
@@ -975,14 +994,14 @@ function pgcal_refreshMapMarkers(map, pgcalSettings, globalSettings) {
   // Clear existing markers
   const markers = window[`pgcal_map_markers_${pgcalSettings["id_hash"]}`] || [];
   const circles = window[`pgcal_map_circles_${pgcalSettings["id_hash"]}`] || [];
-  
+
   markers.forEach(marker => marker.setMap(null));
   circles.forEach(circle => circle.setMap(null));
-  
+
   // Reset arrays
   window[`pgcal_map_markers_${pgcalSettings["id_hash"]}`] = [];
   window[`pgcal_map_circles_${pgcalSettings["id_hash"]}`] = [];
-  
+
   // Fetch fresh events with new date range
   pgcal_fetchAndAddEventMarkers(map, pgcalSettings, globalSettings);
 }
@@ -992,14 +1011,14 @@ function pgcal_refreshMapMarkers(map, pgcalSettings, globalSettings) {
  */
 function pgcal_fetchAndAddEventMarkers(map, pgcalSettings, globalSettings) {
   const calendarIds = pgcalSettings["gcal"].split(",");
-  
+
   calendarIds.forEach((calendarId, index) => {
     const trimmedId = calendarId.trim();
     if (!trimmedId) return;
-    
+
     // Create a date range based on month_only_mode or past_days_limit parameter
     let timeMin, timeMax;
-    
+
     if (pgcalSettings["month_only_mode"] === "true") {
       // Use specific month range
       timeMin = pgcalSettings["month_start"];
@@ -1012,21 +1031,25 @@ function pgcal_fetchAndAddEventMarkers(map, pgcalSettings, globalSettings) {
       pastLimitDate.setDate(now.getDate() - pastDaysLimit);
       const oneYearLater = new Date();
       oneYearLater.setFullYear(now.getFullYear() + 1);
-      
+
       timeMin = pastLimitDate.toISOString();
       timeMax = oneYearLater.toISOString();
     }
-    
+
     // Fetch events from Google Calendar API
     const apiUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(trimmedId)}/events?key=${globalSettings["google_api"]}&timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime&maxResults=500`;
-    
+
     fetch(apiUrl)
       .then(response => response.json())
       .then(data => {
         console.log('API Response:', data); // DEBUG
         if (data.items && data.items.length > 0) {
+          console.log('First item from API:', data.items[0]); // DEBUG
+          console.log('First item.id:', data.items[0].id); // DEBUG
+          console.log('First item.htmlLink:', data.items[0].htmlLink); // DEBUG
           // Convert Google Calendar events to FullCalendar-like format
           const events = data.items.map(item => ({
+            id: item.id,
             title: item.summary || 'No Title',
             start: new Date(item.start.dateTime || item.start.date),
             end: new Date(item.end.dateTime || item.end.date),
@@ -1036,15 +1059,15 @@ function pgcal_fetchAndAddEventMarkers(map, pgcalSettings, globalSettings) {
             },
             url: item.htmlLink
           }));
-          
+
           console.log('Converted events:', events); // DEBUG
           console.log('Events with locations:', events.filter(e => e.extendedProps.location)); // DEBUG
-          
+
           // Create a fake calendar object for compatibility
           const fakeCalendar = {
             getEvents: () => events
           };
-          
+
           // Add markers to map
           pgcal_addEventMarkersToMap(map, fakeCalendar, pgcalSettings);
         } else {
@@ -1057,5 +1080,225 @@ function pgcal_fetchAndAddEventMarkers(map, pgcalSettings, globalSettings) {
       });
   });
 }
+
+/**
+ * Add to Calendar - Primary method using Google Calendar API
+ * Falls back to calendar URL method if API call fails
+ */
+// Add-to-calendar flow (map mode):
+// - event.id is the composite eid from Google (base64 of "<eventId> <calendarId>@g")
+// - calendarId is extracted from event.url cid= if present; otherwise we send primary and let PHP decode the composite
+// - We optimistically disable the button, call WP AJAX, and re-enable/fallback to URL on failure
+function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null, btn = null) {
+  const eventId = event.id;
+  
+  // If statusEl/btn not provided, try to find them (fallback for old calls)
+  if (!statusEl) statusEl = document.querySelector(`[data-event-id="${eventId}"]`)?.parentElement?.querySelector('.pgcal-add-status');
+  if (!btn) btn = document.querySelector(`[data-event-id="${eventId}"]`);
+  
+  console.log('🔵 pgcal_addToCalendar called with event:', { eventId, event });
+  
+  if (!statusEl || !btn) {
+    console.error('❌ Missing status or button elements for event:', eventId);
+    return;
+  }
+
+  // Show loading state
+  btn.disabled = true;
+  btn.style.opacity = '0.7';
+  statusEl.style.display = 'inline';
+  statusEl.textContent = 'Adding...';
+  statusEl.style.color = '#ff9800';
+
+  // Extract calendar ID from event URL if available (format: https://www.google.com/calendar/event?eid=COMPOSITE_ID&cid=CALENDAR_ID)
+  let calendarId = 'primary';
+  if (event.url && event.url.includes('cid=')) {
+    const cidMatch = event.url.match(/cid=([^&]+)/);
+    if (cidMatch && cidMatch[1]) {
+      calendarId = decodeURIComponent(cidMatch[1]);
+      console.log('📋 Extracted calendar ID from URL:', calendarId);
+    }
+  }
+  // If still no calendar ID from URL, send the raw event ID (composite) and let PHP decode it
+  if (calendarId === 'primary') {
+    console.log('📋 Using default calendar ID (primary), PHP will extract from composite ID if needed');
+  }
+
+  const requestBody = `action=pgcal_add_to_calendar&event_id=${encodeURIComponent(eventId)}&calendar_id=${encodeURIComponent(calendarId)}`;
+  console.log('📤 Sending AJAX request to:', pgcal_vars.ajaxurl);
+  console.log('📋 Request body:', requestBody);
+
+  // First attempt: Call WordPress AJAX handler to add attendee via Google Calendar API
+  fetch(pgcal_vars.ajaxurl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    },
+    body: requestBody,
+  })
+    .then(response => {
+      console.log('📥 Response status:', response.status, response.statusText);
+      console.log('📥 Response headers:', {
+        'content-type': response.headers.get('content-type')
+      });
+      return response.text().then(text => {
+        console.log('📥 Raw response body:', text);
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          throw new Error(`Failed to parse JSON: ${e.message}. Raw text: ${text}`);
+        }
+      });
+    })
+    .then(data => {
+      console.log('✅ Add to Calendar API Response (parsed):', data);
+      
+      if (data.success) {
+        console.log('🎉 API call succeeded!');
+        // API call succeeded
+        statusEl.textContent = '✓ Added!';
+        statusEl.style.color = '#4caf50';
+        btn.style.background = '#4caf50';
+        
+        setTimeout(() => {
+          statusEl.style.display = 'none';
+          btn.disabled = false;
+          btn.style.opacity = '1';
+        }, 2000);
+      } else {
+        // API call failed, use fallback: open calendar URL
+        console.warn('⚠️ API request returned success=false. Error:', data.data?.message || data.message);
+        console.log('📞 Falling back to calendar URL method...');
+        pgcal_addToCalendarFallback(calendarUrls, statusEl, btn);
+      }
+    })
+    .catch(error => {
+      // Network error or other issue, use fallback
+      console.error('❌ Error calling add to calendar API:', error);
+      console.log('📞 Falling back to calendar URL method...');
+      pgcal_addToCalendarFallback(calendarUrls, statusEl, btn);
+    });
+}
+
+/**
+ * Fallback method: Open calendar URL in new tab
+ */
+function pgcal_addToCalendarFallback(calendarUrls, statusEl, btn) {
+  statusEl.textContent = '✓ Opening calendar...';
+  statusEl.style.color = '#4caf50';
+  btn.style.background = '#4caf50';
+  
+  // Open Google Calendar template in new tab
+  window.open(calendarUrls.google, '_blank');
+  
+  setTimeout(() => {
+    statusEl.style.display = 'none';
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  }, 2000);
+}
+
+/**
+ * Attach event delegation listener for "Add to Calendar" buttons
+ * This uses event delegation to catch all button clicks, even dynamically added ones
+ */
+document.addEventListener('click', function(e) {
+  if (e.target.classList && e.target.classList.contains('pgcal-add-btn')) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const btn = e.target;
+    let eventId = btn.getAttribute('data-event-id');
+    const eventUrl = btn.getAttribute('data-event-url');
+    const location = btn.getAttribute('data-location');
+    const eventTitle = btn.getAttribute('data-event-title');
+    
+    // Extract event ID from URL if it's undefined or the string "undefined"
+    if (!eventId || eventId === 'undefined' || eventId === '') {
+      if (eventUrl && eventUrl.includes('eid=')) {
+        eventId = eventUrl.split('eid=')[1]?.split('&')[0] || '';
+        console.log('📤 Extracted event ID from URL:', eventId);
+      }
+    }
+    
+    console.log(' Full burron element:', btn);
+    console.log(' data-event-id attribute:', eventId);
+    console.log(' data-event-url attribute:', eventUrl);
+    console.log(' data-location attribute:', location);
+    console.log(' data-event-title attribute:', eventTitle);
+    console.log('all data attributes:', btn.dataset);
+
+    console.log('🔵 "Add to Calendar" button clicked!');
+    console.log('📝 Event ID:', eventId);
+    console.log('📍 Location:', location);
+    console.log('📌 Title:', eventTitle);
+    console.log('🔗 Event URL:', eventUrl);
+    
+    // Create event object from data attributes
+    const event = { 
+      id: eventId,
+      title: eventTitle,
+      url: eventUrl
+    };
+    
+    // Get pgcalSettings from window
+    let pgcalSettings = window.pgcal_current_settings;
+    if (!pgcalSettings) {
+      console.warn('⚠️ pgcalSettings not found, using defaults');
+      pgcalSettings = {};
+    }
+    
+    // Generate calendar URLs - get status and button from the popup
+    const popup = btn.closest('.pgcal-popup-content');
+    let statusEl = null;
+    if (popup) {
+      statusEl = popup.querySelector('.pgcal-add-status');
+    }
+    
+    if (!statusEl) {
+      console.warn('⚠️ Status element not found, creating one');
+      statusEl = document.createElement('span');
+      statusEl.className = 'pgcal-add-status';
+      statusEl.style.display = 'none';
+      statusEl.style.marginLeft = '10px';
+      statusEl.style.fontSize = '14px';
+      btn.parentElement.appendChild(statusEl);
+    }
+    
+    const calendarUrls = {
+      google: `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&location=${encodeURIComponent(location)}`
+    };
+    
+    console.log('🔗 Generated calendar URL');
+    
+    // Call the main handler
+    pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl, btn);
+  }
+}, true); // Use capture phase to ensure we catch the event first
+
+// Add a button to log current user details
+// document.addEventListener("DOMContentLoaded", function () {
+//   const logUserButton = document.createElement("button");
+//   logUserButton.textContent = "Log The Current User NOW";
+//   logUserButton.style.margin = "10px";
+//   logUserButton.addEventListener("click", function () {
+//     fetch(pgcal_vars.ajaxurl, {
+//       method: "POST",
+//       headers: {
+//         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+//       },
+//       body: "action=pgcal_log_user_details",
+//     })
+//       .then((response) => response.json())
+//       .then((data) => {
+//         console.log("User Details:", data);
+//       })
+//       .catch((error) => {
+//         console.error("Error logging user details:", error);
+//       });
+//   });
+
+//   document.body.appendChild(logUserButton);
+// });
 
 

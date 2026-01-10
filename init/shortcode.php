@@ -76,6 +76,11 @@ function pgcal_shortcode($atts) {
   wp_enqueue_script('pgcal_helpers');
   wp_enqueue_script('pgcal_loader');
 
+  // Localize ajaxurl for pgcal.js
+  wp_localize_script('pgcal_loader', 'pgcal_vars', array(
+    'ajaxurl' => admin_url('admin-ajax.php')
+  ));
+
   // Load Styles
   wp_enqueue_style('fullcalendar');
   wp_enqueue_style('pgcal_css');

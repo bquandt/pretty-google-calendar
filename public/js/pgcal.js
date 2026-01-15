@@ -129,6 +129,57 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
       if (pgcalSettings["use_tooltip"] === "true") {
         pgcal_tippyRender(info, currCal);
       }
+
+      // Add "Add to Calendar" button to grid/list events (always enabled)
+      const event = info.event;
+      
+      // Extract event ID from URL (composite eid) or fallback to event.id
+      let eventId = '';
+      if (event.url && event.url.includes('eid=')) {
+        eventId = event.url.split('eid=')[1]?.split('&')[0] || '';
+        console.log('🔍 [Grid/List] Extracted composite event ID from URL:', eventId);
+      }
+      if (!eventId) {
+        eventId = event.id || '';
+        console.log('🔍 [Grid/List] Using fallback event.id:', eventId);
+      }
+
+      const location = event.extendedProps.location || '';
+      const eventTitle = event.title || '';
+      const eventUrl = event.url || '';
+
+      // Only add button if we have required data
+      if (eventId && eventTitle) {
+        console.log('✅ [Grid/List] Adding "+ Add Me" button for event:', eventTitle, '| eventId:', eventId);
+        
+        // Create button container
+        const btnContainer = document.createElement('div');
+        btnContainer.style.cssText = 'margin-top: 4px; display: flex; align-items: center; gap: 8px;';
+        
+        // Create the button
+        const btn = document.createElement('button');
+        btn.className = 'pgcal-add-btn';
+        btn.setAttribute('data-event-id', eventId);
+        btn.setAttribute('data-event-url', eventUrl);
+        btn.setAttribute('data-location', location);
+        btn.setAttribute('data-event-title', eventTitle);
+        btn.style.cssText = 'padding: 4px 10px; background: #4285f4; color: white; border: none; border-radius: 3px; font-size: 12px; font-weight: 500; cursor: pointer; transition: background 0.3s;';
+        btn.textContent = '+ Add Me';
+        btn.title = 'Add yourself as an attendee';
+        
+        // Create status span
+        const statusEl = document.createElement('span');
+        statusEl.className = 'pgcal-add-status';
+        statusEl.style.cssText = 'display: none; font-size: 11px;';
+        
+        btnContainer.appendChild(btn);
+        btnContainer.appendChild(statusEl);
+        
+        // Append to event element
+        info.el.appendChild(btnContainer);
+      } else {
+        console.log('⚠️ [Grid/List] Skipping button - missing eventId or title:', { eventId, eventTitle });
+      }
     },
 
     eventClick: function (info) {
@@ -1156,7 +1207,7 @@ function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null
       if (data.success) {
         console.log('🎉 API call succeeded!');
         // API call succeeded
-        statusEl.textContent = '✓ Added!';
+        statusEl.textContent = '✓ Added Event to your Google Calendar!';
         statusEl.style.color = '#4caf50';
         btn.style.background = '#4caf50';
         
@@ -1248,15 +1299,19 @@ document.addEventListener('click', function(e) {
       pgcalSettings = {};
     }
     
-    // Generate calendar URLs - get status and button from the popup
-    const popup = btn.closest('.pgcal-popup-content');
-    let statusEl = null;
-    if (popup) {
-      statusEl = popup.querySelector('.pgcal-add-status');
+    // Find status element - check parent container first (grid/list), then popup (map)
+    let statusEl = btn.parentElement?.querySelector('.pgcal-add-status');
+    
+    if (!statusEl) {
+      // Try map popup context
+      const popup = btn.closest('.pgcal-popup-content');
+      if (popup) {
+        statusEl = popup.querySelector('.pgcal-add-status');
+      }
     }
     
     if (!statusEl) {
-      console.warn('⚠️ Status element not found, creating one');
+      console.warn('⚠️ Status element not found in parent or popup, creating one');
       statusEl = document.createElement('span');
       statusEl.className = 'pgcal-add-status';
       statusEl.style.display = 'none';
@@ -1264,6 +1319,8 @@ document.addEventListener('click', function(e) {
       statusEl.style.fontSize = '14px';
       btn.parentElement.appendChild(statusEl);
     }
+    
+    console.log('📊 Status element found/created:', statusEl);
     
     const calendarUrls = {
       google: `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&location=${encodeURIComponent(location)}`

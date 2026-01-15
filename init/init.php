@@ -227,12 +227,19 @@ function pgcal_add_to_calendar_handler() {
     error_log("✅ Using current user email: {$attendee_email}");
   }
 
-  // Google Calendar API credentials (HARDCODED PLACEHOLDERS - TODO: Move to secure config)
-  $client_id = 'YOUR_CLIENT_ID_HERE';
-  $client_secret = 'YOUR_CLIENT_SECRET_HERE';
-  $refresh_token = 'YOUR_REFRESH_TOKEN_HERE';
+  // Google Calendar API credentials
+  $pgcal_settings = get_option('pgcal_settings', array());
+  $client_id = isset($pgcal_settings['google_client_id']) ? $pgcal_settings['google_client_id'] : '';
+  $client_secret = isset($pgcal_settings['google_client_secret']) ? $pgcal_settings['google_client_secret'] : '';
+  $refresh_token = isset($pgcal_settings['google_refresh_token']) ? $pgcal_settings['google_refresh_token'] : '';
 
-  error_log('🔐 Credentials loaded');
+  // Validate credentials exist
+  if (empty($client_id) || empty($client_secret) || empty($refresh_token)) {
+    error_log('❌ Error: Google Calendar credentials not configured. Please set them in plugin settings.');
+    wp_send_json_error(array('message' => 'Google Calendar credentials not configured. Please set them in plugin settings.'));
+    return;
+  }
+  
   try {
     // 1) Exchange refresh token for access token
     error_log('🔄 Exchanging refresh token for access token...');

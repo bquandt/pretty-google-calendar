@@ -90,6 +90,30 @@ class pgcalSettings {
       'pgcal-main-settings' // Section
     );
 
+    add_settings_field(
+      'google_client_id',
+      esc_attr__('Google Client ID', 'pretty-google-calendar'),
+      array($this, 'pgcal_client_id_callback'), // Callback
+      'pgcal-setting-admin', // Page
+      'pgcal-main-settings' // Section
+    );
+
+    add_settings_field(
+      'google_client_secret',
+      esc_attr__('Google Client Secret', 'pretty-google-calendar'),
+      array($this, 'pgcal_client_secret_callback'), // Callback
+      'pgcal-setting-admin', // Page
+      'pgcal-main-settings' // Section
+    );
+
+    add_settings_field(
+      'google_refresh_token',
+      esc_attr__('Google Refresh Token', 'pretty-google-calendar'),
+      array($this, 'pgcal_refresh_token_callback'), // Callback
+      'pgcal-setting-admin', // Page
+      'pgcal-main-settings' // Section
+    );
+
     // add_settings_field(
     //   'use_tooltip',
     //   esc_attr__('Use Tooltip (Migrating to shortcode attribute use_tooltip)', 'pretty-google-calendar'),
@@ -117,6 +141,15 @@ class pgcalSettings {
     if (isset($input['google_api']))
       // TODO test api?
       $sanitized_input['google_api'] = $input['google_api'];
+
+    if (isset($input['google_client_id']))
+      $sanitized_input['google_client_id'] = sanitize_text_field($input['google_client_id']);
+
+    if (isset($input['google_client_secret']))
+      $sanitized_input['google_client_secret'] = sanitize_text_field($input['google_client_secret']);
+
+    if (isset($input['google_refresh_token']))
+      $sanitized_input['google_refresh_token'] = sanitize_text_field($input['google_refresh_token']);
 
     // if (isset($input['use_tooltip']))
     //   $sanitized_input['use_tooltip'] = sanitize_text_field($input['use_tooltip']);
@@ -244,6 +277,36 @@ class pgcalSettings {
     printf(
       '<input type="text" id="google_api" name="pgcal_settings[google_api]" value="%s" />',
       isset($this->options['google_api']) ? esc_attr($this->options['google_api']) : ''
+    );
+  }
+
+  /**
+   * Callback for Google Client ID field
+   */
+  public function pgcal_client_id_callback() {
+    printf(
+      '<input type="text" id="google_client_id" name="pgcal_settings[google_client_id]" value="%s" />',
+      isset($this->options['google_client_id']) ? esc_attr($this->options['google_client_id']) : ''
+    );
+  }
+
+  /**
+   * Callback for Google Client Secret field
+   */
+  public function pgcal_client_secret_callback() {
+    printf(
+      '<input type="password" id="google_client_secret" name="pgcal_settings[google_client_secret]" value="%s" />',
+      isset($this->options['google_client_secret']) ? esc_attr($this->options['google_client_secret']) : ''
+    );
+  }
+
+  /**
+   * Callback for Google Refresh Token field
+   */
+  public function pgcal_refresh_token_callback() {
+    printf(
+      '<input type="password" id="google_refresh_token" name="pgcal_settings[google_refresh_token]" value="%s" />',
+      isset($this->options['google_refresh_token']) ? esc_attr($this->options['google_refresh_token']) : ''
     );
   }
 

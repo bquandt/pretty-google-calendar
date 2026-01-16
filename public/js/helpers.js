@@ -200,6 +200,8 @@ function pgcal_mapify(text) {
  * @param {string} url
  * @returns formatted HTML url
  */
+
+// Standard used in google calendar button popup for the non-map view...Called in tippy.js
 function pgcal_addToGoogle(url) {
   const buttonLabel = __("Add to Google Calendar", "pretty-google-calendar");
   if (url) {

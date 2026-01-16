@@ -26,22 +26,553 @@ async function pgcalFetchGlobals(ajaxurl) {
   });
 }
 
+/**
+ * Check if current user is an attendee of an event
+ * @param {string} calendarId - The calendar ID (can be empty, will be extracted from composite ID)
+ * @param {string} eventId - The event ID (composite or regular)
+ * @param {string} apiKey - Google API key
+ * @param {string} userEmail - Current user's email
+ * @param {string} calendarIds - Comma-separated list of calendar IDs from settings (fallback)
+ * @returns {Promise<boolean>} - True if user is an attendee
+ */
+
+// IF BREAKS, REVERT TO THIS VERSION:
+// async function pgcalCheckUserIsAttendee(calendarId, eventId, apiKey, userEmail, calendarIds = '') {
+//   if (!userEmail || !eventId || !apiKey) {
+//     console.log('⚠️ Missing required parameters for attendee check:', { userEmail, eventId, apiKey });
+//     return false;
+//   }
+
+//   try {
+//     // Try to extract calendar ID from composite event ID (base64 encoded)
+//     let extractedCalendarId = calendarId;
+//     let extractedEventId = eventId;
+
+//     if (!extractedCalendarId || extractedCalendarId === '') {
+//       try {
+//         // Composite event ID is base64 encoded: "<eventId> <calendarId>@g" or "<eventId> <calendarId>@group.calendar.google.com"
+//         const decoded = atob(eventId);
+//         console.log('🔓 Decoded composite ID:', decoded);
+
+//         // Split by space to get event ID and calendar ID
+//         const parts = decoded.split(' ');
+//         if (parts.length >= 2) {
+//           extractedEventId = parts[0];
+//           // Calendar ID is everything after the space, may end with @g or @group.calendar.google.com
+//           let calPart = parts.slice(1).join(' ');
+//           // Normalize @g to @group.calendar.google.com
+//           if (calPart.endsWith('@g')) {
+//             calPart = calPart.replace('@g', '@group.calendar.google.com');
+//           }
+//           extractedCalendarId = calPart;
+//           console.log('✅ Extracted from composite:', { eventId: extractedEventId, calendarId: extractedCalendarId });
+//         }
+//       } catch (e) {
+//         console.log('⚠️ Failed to decode composite ID, trying as regular ID');
+//       }
+//     }
+
+//     // If still no calendar ID, try each calendar from settings
+//     if (!extractedCalendarId || extractedCalendarId === '') {
+//       if (calendarIds) {
+//         const calIds = calendarIds.split(',').map(id => id.trim()).filter(id => id);
+//         console.log('🔄 Trying calendar IDs from settings:', calIds);
+
+//         for (const tryCalId of calIds) {
+//           const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(tryCalId)}/events/${encodeURIComponent(extractedEventId)}?key=${apiKey}`;
+
+//           try {
+//             const response = await fetch(url);
+//             if (response.ok) {
+//               extractedCalendarId = tryCalId;
+//               console.log('✅ Found event in calendar:', tryCalId);
+//               break;
+//             }
+//           } catch (e) {
+//             // Continue to next calendar
+//           }
+//         }
+//       }
+
+//       if (!extractedCalendarId || extractedCalendarId === '') {
+//         console.log('❌ Could not determine calendar ID');
+//         return false;
+//       }
+//     }
+
+//     // Now fetch event details with the correct calendar and event IDs
+//     //Base url https://www.googleapis.com/calendar/v3/calendars/calendarId/events/eventId
+//     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(extractedCalendarId)}/events/${encodeURIComponent(extractedEventId)}?key=${apiKey}&maxAttendees=30`;
+
+//     console.log('🔍 Checking attendees for event:', extractedEventId, 'in calendar:', extractedCalendarId);
+//     console.log('📞 API URL:', url);
+
+//     const response = await fetch(url);
+//     if (!response.ok) {
+//       console.log('⚠️ Failed to fetch event details:', response.status, response.statusText);
+//       const errorText = await response.text();
+//       console.log('⚠️ Error response:', errorText);
+//       return false;
+//     }
+
+//     const eventData = await response.json();
+
+//     // Log the FULL event data to see what we're getting
+//     console.log('📦 FULL API Response:', eventData);
+//     console.log('👥 Attendees field:', eventData.attendees);
+//     console.log('👤 Looking for user email:', userEmail);
+
+//     // Check if user is in attendees list
+//     if (eventData.attendees && Array.isArray(eventData.attendees)) {
+//       console.log('✅ Attendees array found with', eventData.attendees.length, 'attendees');
+//       console.log('📋 All attendees:', eventData.attendees.map(a => a.email));
+
+//       const isAttendee = eventData.attendees.some(attendee => 
+//         attendee.email && attendee.email.toLowerCase() === userEmail.toLowerCase()
+//       );
+//       console.log(isAttendee ? '✅ User is already an attendee' : '❌ User is not an attendee');
+//       return isAttendee;
+//     }
+
+//     console.log('ℹ️ No attendees list found for event');
+//     console.log('🔑 Available event fields:', Object.keys(eventData));
+//     return false;
+//   } catch (error) {
+//     console.error('❌ Error checking attendees:', error);
+//     return false;
+//   }
+// }
+
+//Disabled for now, moving to server-side check in init.php
+// async function pgcalCheckUserIsAttendee(
+//   calendarId,
+//   eventId,
+//   apiKey,
+//   userEmail,
+//   calendarIds = ''
+// ) {
+//   if (!userEmail || !eventId || !apiKey) {
+//     console.log('⚠️ Missing required parameters', { userEmail, eventId, apiKey });
+//     return false;
+//   }
+
+//   try {
+//     let extractedEventId = eventId;
+//     let extractedCalendarId = calendarId || '';
+
+//     /* --------------------------------------------------
+//      * 1. Decode composite/base64 ID if present
+//      * -------------------------------------------------- */
+
+//     try {
+//       const decoded = atob(eventId);
+//       if (decoded.includes(' ')) {
+//         const parts = decoded.split(' ');
+//         extractedEventId = parts[0];
+
+//         if (!extractedCalendarId) {
+//           let calPart = parts.slice(1).join(' ');
+//           if (calPart.endsWith('@g')) {
+//             calPart = calPart.replace('@g', '@group.calendar.google.com');
+//           }
+//           extractedCalendarId = calPart;
+//         }
+
+//         console.log('🔓 Decoded composite ID:', {
+//           eventId: extractedEventId,
+//           calendarId: extractedCalendarId,
+//         });
+//       }
+//     } catch {
+//       // not base64, ignore
+//     }
+
+//     /* --------------------------------------------------
+//      * 2. Build calendars to try
+//      * -------------------------------------------------- */
+
+//     let calendarsToTry = [];
+
+//     if (extractedCalendarId) calendarsToTry.push(extractedCalendarId);
+
+//     if (calendarIds) {
+//       calendarsToTry.push(
+//         ...calendarIds
+//           .split(',')
+//           .map(id => id.trim())
+//           .filter(Boolean)
+//       );
+//     }
+
+//     calendarsToTry = [...new Set(calendarsToTry)];
+
+//     if (calendarsToTry.length === 0) {
+//       console.log('❌ No calendar IDs available');
+//       return false;
+//     }
+
+//     console.log('🔄 Calendars to try:', calendarsToTry);
+
+//     /* --------------------------------------------------
+//      * 3. Fetch ALL events (curl-equivalent)
+//      * -------------------------------------------------- */
+
+//     for (const calId of calendarsToTry) {
+//       const listUrl =
+//         `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events` +
+//         `?timeMin=1970-01-01T00:00:00Z` +
+//         `&maxResults=2500` +
+//         `&singleEvents=true` +
+//         `&key=${apiKey}`;
+
+//       console.log('📞 events.list URL:', listUrl);
+
+//       let response;
+//       try {
+//         response = await fetch(listUrl);
+//       } catch {
+//         console.log('⚠️ Fetch failed for calendar:', calId);
+//         continue;
+//       }
+
+//       if (!response.ok) {
+//         console.log('⚠️ events.list failed:', response.status);
+//         continue;
+//       }
+
+//       const data = await response.json();
+
+//       if (!Array.isArray(data.items) || data.items.length === 0) {
+//         console.log('ℹ️ No events returned for calendar:', calId);
+//         continue;
+//       }
+
+//       console.log(`📦 ${data.items.length} events fetched`);
+
+//       /* --------------------------------------------------
+//        * 4. Match event client-side
+//        * -------------------------------------------------- */
+
+//       const matchedEvent = data.items.find(ev =>
+//         ev.id === extractedEventId ||
+//         ev.iCalUID === extractedEventId ||
+//         ev.id === eventId ||
+//         ev.iCalUID === eventId
+//       );
+
+//       if (!matchedEvent) {
+//         console.log('ℹ️ Event not found in this calendar');
+//         continue;
+//       }
+
+//       console.log('✅ Matched event:', matchedEvent.id);
+
+//       /* --------------------------------------------------
+//        * 5. Check attendees
+//        * -------------------------------------------------- */
+
+//       const attendees = matchedEvent.attendees || [];
+
+//       console.log('👥 Attendees:', attendees.map(a => a.email));
+
+//       const isAttendee = attendees.some(
+//         a => a.email && a.email.toLowerCase() === userEmail.toLowerCase()
+//       );
+
+//       console.log(
+//         isAttendee
+//           ? '✅ User is already an attendee'
+//           : '❌ User is not an attendee'
+//       );
+
+//       return isAttendee;
+//     }
+
+//     console.log('❌ Event not found in any calendar');
+//     return false;
+
+//   } catch (error) {
+//     console.error('❌ Error checking attendees:', error);
+//     return false;
+//   }
+// }
+
+
+/**
+ * Get current user's email (placeholder - needs implementation based on WordPress/plugin setup)
+ * @returns {Promise<string>} - User's email address
+ */
+async function pgcalGetCurrentUserEmail(ajaxurl) {
+  try {
+    const xhr = new XMLHttpRequest();
+    return new Promise((resolve, reject) => {
+      xhr.open('POST', ajaxurl, true);
+      xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const response = JSON.parse(xhr.responseText);
+          resolve(response.user_email || '');
+        } else {
+          resolve('');
+        }
+      };
+      xhr.onerror = function () {
+        resolve('');
+      };
+      xhr.send('action=pgcal_get_user_email');
+    });
+  } catch (error) {
+    console.error('Error fetching user email:', error);
+    return '';
+  }
+}
+// If broken, return to this version:
+// async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
+//   const globalSettings = await pgcalFetchGlobals(ajaxurl);
+
+//   // Store ajaxurl globally for use in async functions
+//   window.pgcal_ajaxurl = ajaxurl;
+
+//   // console.log(globalSettings["google_api"]); // DEBUG
+
+//   // Check if we're in map-only mode
+//   if (pgcalSettings["show_map"] === "true") {
+//     // Map-only mode - skip calendar rendering and go straight to map
+//     pgcal_render_map(pgcalSettings, globalSettings);
+//     return;
+//   }
+
+//   // Calendar-only mode - render calendar as normal
+//   const currCal = `pgcalendar-${pgcalSettings["id_hash"]}`;
+//   const calendarEl = document.getElementById(currCal);
+//   if (!calendarEl) return; // Exit if no calendar container
+
+//   calendarEl.innerHTML = "";
+//   let width = window.innerWidth;
+
+//   const views = pgcal_resolve_views(pgcalSettings);
+//   const cals = pgcal_resolve_cals(pgcalSettings);
+
+//   // console.table(cals); // DEBUG
+//   // console.table(pgcalSettings); // DEBUG
+//   // console.table(views); // DEBUG
+
+//   const toolbarLeft = pgcal_is_truthy(pgcalSettings["show_today_button"])
+//     ? "prev,next today"
+//     : "prev,next";
+//   // Always show the month name above the calendar in Month view
+//   let toolbarCenter;
+//   if (views.initial === "dayGridMonth" || (pgcalSettings["force_month_title"] === "true")) {
+//     toolbarCenter = "title";
+//   } else {
+//     toolbarCenter = pgcal_is_truthy(pgcalSettings["show_title"]) ? "title" : "";
+//   }
+//   const toolbarRight = views.length > 1 ? views.all.join(",") : "";
+
+//   let selectedView = views.initial;
+
+//   const pgcalDefaults = {
+//     locale: pgcalSettings["locale"],
+//     googleCalendarApiKey: globalSettings["google_api"],
+
+//     eventSources: cals,
+
+//     views: {
+//       // Options apply to dayGridMonth, dayGridWeek, and dayGridDay views
+//       dayGrid: {
+//         eventTimeFormat: {
+//           hour: "numeric",
+//           minute: "2-digit",
+//           meridiem: "short",
+//         },
+//       },
+//       // Custom List View
+//       listCustom: {
+//         type: "list",
+//         duration: { days: parseInt(pgcalSettings["custom_days"]) },
+//         buttonText: pgcalSettings["custom_list_button"],
+//       },
+//     },
+
+//     // Day grid options
+//     eventDisplay: "block", // Adds border and bocks to events instead of bulleted list (default)
+//     height: "auto",
+//     fixedWeekCount: false, // True: 6 weeks, false: flex for month
+
+//     // List options
+//     listDayFormat: { weekday: "long", month: "long", day: "numeric" },
+
+//     initialView: views.initial,
+
+//     headerToolbar: {
+//       left: toolbarLeft,
+//       center: toolbarCenter,
+//       right: toolbarRight,
+//     },
+
+//     viewDidMount: function (arg) {
+//       // Ensure the month name is always shown above the calendar in Month view
+//       if (arg.view.type === "dayGridMonth") {
+//         const calendarApi = arg.view.calendar;
+//         calendarApi.setOption("headerToolbar", {
+//           left: toolbarLeft,
+//           center: "title",
+//           right: toolbarRight
+//         });
+//       } else {
+//         const calendarApi = arg.view.calendar;
+//         calendarApi.setOption("headerToolbar", {
+//           left: toolbarLeft,
+//           center: toolbarCenter,
+//           right: toolbarRight
+//         });
+//       }
+//     },
+
+//     eventDidMount: function (info) {
+//       if (pgcalSettings["use_tooltip"] === "true") {
+//         pgcal_tippyRender(info, currCal);
+//       }
+
+//       // Add "Add to Calendar" button to grid/list events (always enabled)
+//       const event = info.event;
+
+//       // Extract event ID from URL (composite eid) or fallback to event.id
+//       let eventId = '';
+//       if (event.url && event.url.includes('eid=')) {
+//         eventId = event.url.split('eid=')[1]?.split('&')[0] || '';
+//         console.log('🔍 [Grid/List] Extracted composite event ID from URL:', eventId);
+//       }
+//       if (!eventId) {
+//         eventId = event.id || '';
+//         console.log('🔍 [Grid/List] Using fallback event.id:', eventId);
+//       }
+
+//       const location = event.extendedProps.location || '';
+//       const eventTitle = event.title || '';
+//       const eventUrl = event.url || '';
+
+//       // Only add button if we have required data
+//       if (eventId && eventTitle) {
+//         console.log('✅ [Grid/List] Adding button for event:', eventTitle, '| eventId:', eventId);
+
+//         // Create button container
+//         const btnContainer = document.createElement('div');
+//         btnContainer.style.cssText = 'margin-top: 4px; display: flex; align-items: center; gap: 8px;';
+
+//         // Create the button
+//         const btn = document.createElement('button');
+//         btn.className = 'pgcal-add-btn';
+//         btn.setAttribute('data-event-id', eventId);
+//         btn.setAttribute('data-event-url', eventUrl);
+//         btn.setAttribute('data-location', location);
+//         btn.setAttribute('data-event-title', eventTitle);
+//         btn.style.cssText = 'padding: 4px 10px; background: #4285f4; color: white; border: none; border-radius: 3px; font-size: 12px; font-weight: 500; cursor: pointer; transition: background 0.3s;';
+//         btn.textContent = 'Checking...';
+//         btn.disabled = true;
+//         btn.title = 'Checking attendance status';
+
+//         // Create status span
+//         const statusEl = document.createElement('span');
+//         statusEl.className = 'pgcal-add-status';
+//         statusEl.style.cssText = 'display: none; font-size: 11px;';
+
+//         btnContainer.appendChild(btn);
+//         btnContainer.appendChild(statusEl);
+
+//         // Append to event element
+//         info.el.appendChild(btnContainer);
+
+//         // Check attendee status asynchronously
+//         (async () => {
+//           try {
+//             const userEmail = await pgcalGetCurrentUserEmail(ajaxurl);
+//             if (!userEmail) {
+//               btn.textContent = '+ Invite Me';
+//               btn.title = 'Add yourself as an attendee';
+//               btn.disabled = false;
+//               return;
+//             }
+
+//             // Extract calendar ID from event source or use settings
+//             const calendarId = event.source?.id || event.source?.googleCalendarId || '';
+//             const calendarIds = pgcalSettings["gcal"] || '';
+//             const isAttendee = await pgcalCheckUserIsAttendee(calendarId, eventId, globalSettings["google_api"], userEmail, calendarIds);
+
+//             if (isAttendee) {
+//               btn.textContent = 'Resend Invite';
+//               btn.title = 'You are already an attendee - resend invitation';
+//               btn.style.background = '#34a853';
+//             } else {
+//               btn.textContent = '+ Invite Me';
+//               btn.title = 'Add yourself as an attendee';
+//             }
+//             btn.disabled = false;
+//           } catch (error) {
+//             console.error('Error checking attendee status:', error);
+//             btn.textContent = '+ Invite Me';
+//             btn.title = 'Add yourself as an attendee';
+//             btn.disabled = false;
+//           }
+//         })();
+//       } else {
+//         console.log('⚠️ [Grid/List] Skipping button - missing eventId or title:', { eventId, eventTitle });
+//       }
+//     },
+
+//     eventClick: function (info) {
+//       if (
+//         pgcalSettings["use_tooltip"] === "true" ||
+//         pgcalSettings["no_link"] === "true"
+//       ) {
+//         info.jsEvent.preventDefault(); // Prevent following link
+//       }
+//     },
+
+//     // Change view on window resize
+//     windowResize: function (view) {
+//       // Catch mobile chrome, which changes window size as nav bar appears
+//       // so only fire if width has changed.
+//       if (
+//         window.innerWidth !== width &&
+//         views.hasList &&
+//         views.wantsToEnforceListviewOnMobile
+//       ) {
+//         if (pgcal_is_mobile()) {
+//           calendar.changeView(views.listType);
+//         } else {
+//           calendar.changeView(selectedView);
+//         }
+//       }
+//     },
+//   };
+
+//   const pgcalOverrides = JSON.parse(pgcalSettings["fc_args"]);
+//   const pgCalArgs = pgcal_argmerge(pgcalDefaults, pgcalOverrides);
+
+//   // console.log(pgcalSettings["fc_args"]); // DEBUG
+//   // console.log(JSON.stringify(pgcalDefaults, null, 2)); // DEBUG
+//   // console.log(JSON.stringify(pgCalArgs, null, 2)); // DEBUG
+
+//   const calendar = new FullCalendar.Calendar(calendarEl, pgCalArgs);
+//   calendar.render();
+
+//   // Store calendar reference for map integration
+//   calendarEl._calendar = calendar;
+// }
+
 async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
   const globalSettings = await pgcalFetchGlobals(ajaxurl);
+  window.pgcal_ajaxurl = ajaxurl;
 
-  // console.log(globalSettings["google_api"]); // DEBUG
-
-  // Check if we're in map-only mode
   if (pgcalSettings["show_map"] === "true") {
-    // Map-only mode - skip calendar rendering and go straight to map
     pgcal_render_map(pgcalSettings, globalSettings);
     return;
   }
 
-  // Calendar-only mode - render calendar as normal
   const currCal = `pgcalendar-${pgcalSettings["id_hash"]}`;
   const calendarEl = document.getElementById(currCal);
-  if (!calendarEl) return; // Exit if no calendar container
+  if (!calendarEl) return;
 
   calendarEl.innerHTML = "";
   let width = window.innerWidth;
@@ -49,32 +580,26 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
   const views = pgcal_resolve_views(pgcalSettings);
   const cals = pgcal_resolve_cals(pgcalSettings);
 
-  // console.table(cals); // DEBUG
-  // console.table(pgcalSettings); // DEBUG
-  // console.table(views); // DEBUG
-
   const toolbarLeft = pgcal_is_truthy(pgcalSettings["show_today_button"])
     ? "prev,next today"
     : "prev,next";
-  // Always show the month name above the calendar in Month view
+
   let toolbarCenter;
-  if (views.initial === "dayGridMonth" || (pgcalSettings["force_month_title"] === "true")) {
+  if (views.initial === "dayGridMonth" || pgcalSettings["force_month_title"] === "true") {
     toolbarCenter = "title";
   } else {
     toolbarCenter = pgcal_is_truthy(pgcalSettings["show_title"]) ? "title" : "";
   }
-  const toolbarRight = views.length > 1 ? views.all.join(",") : "";
 
+  const toolbarRight = views.length > 1 ? views.all.join(",") : "";
   let selectedView = views.initial;
 
   const pgcalDefaults = {
     locale: pgcalSettings["locale"],
     googleCalendarApiKey: globalSettings["google_api"],
-
     eventSources: cals,
 
     views: {
-      // Options apply to dayGridMonth, dayGridWeek, and dayGridDay views
       dayGrid: {
         eventTimeFormat: {
           hour: "numeric",
@@ -82,7 +607,6 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
           meridiem: "short",
         },
       },
-      // Custom List View
       listCustom: {
         type: "list",
         duration: { days: parseInt(pgcalSettings["custom_days"]) },
@@ -90,14 +614,10 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
       },
     },
 
-    // Day grid options
-    eventDisplay: "block", // Adds border and bocks to events instead of bulleted list (default)
+    eventDisplay: "block",
     height: "auto",
-    fixedWeekCount: false, // True: 6 weeks, false: flex for month
-
-    // List options
+    fixedWeekCount: false,
     listDayFormat: { weekday: "long", month: "long", day: "numeric" },
-
     initialView: views.initial,
 
     headerToolbar: {
@@ -106,23 +626,13 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
       right: toolbarRight,
     },
 
-    viewDidMount: function (arg) {
-      // Ensure the month name is always shown above the calendar in Month view
-      if (arg.view.type === "dayGridMonth") {
-        const calendarApi = arg.view.calendar;
-        calendarApi.setOption("headerToolbar", {
-          left: toolbarLeft,
-          center: "title",
-          right: toolbarRight
-        });
-      } else {
-        const calendarApi = arg.view.calendar;
-        calendarApi.setOption("headerToolbar", {
-          left: toolbarLeft,
-          center: toolbarCenter,
-          right: toolbarRight
-        });
-      }
+    eventClick: function (info) {
+      // 🚫 Stop FullCalendar from navigating to Google Calendar
+      info.jsEvent.preventDefault();
+      info.jsEvent.stopPropagation();
+
+      // Optional debug
+      console.log('🛑 FullCalendar eventClick intercepted', info.event.id);
     },
 
     eventDidMount: function (info) {
@@ -130,98 +640,86 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
         pgcal_tippyRender(info, currCal);
       }
 
-      // Add "Add to Calendar" button to grid/list events (always enabled)
       const event = info.event;
-      
-      // Extract event ID from URL (composite eid) or fallback to event.id
+
+      // Extract event ID
       let eventId = '';
       if (event.url && event.url.includes('eid=')) {
         eventId = event.url.split('eid=')[1]?.split('&')[0] || '';
-        console.log('🔍 [Grid/List] Extracted composite event ID from URL:', eventId);
       }
       if (!eventId) {
         eventId = event.id || '';
-        console.log('🔍 [Grid/List] Using fallback event.id:', eventId);
       }
 
       const location = event.extendedProps.location || '';
       const eventTitle = event.title || '';
       const eventUrl = event.url || '';
 
-      // Only add button if we have required data
-      if (eventId && eventTitle) {
-        console.log('✅ [Grid/List] Adding "+ Add Me" button for event:', eventTitle, '| eventId:', eventId);
-        
-        // Create button container
-        const btnContainer = document.createElement('div');
-        btnContainer.style.cssText = 'margin-top: 4px; display: flex; align-items: center; gap: 8px;';
-        
-        // Create the button
-        const btn = document.createElement('button');
-        btn.className = 'pgcal-add-btn';
-        btn.setAttribute('data-event-id', eventId);
-        btn.setAttribute('data-event-url', eventUrl);
-        btn.setAttribute('data-location', location);
-        btn.setAttribute('data-event-title', eventTitle);
-        btn.style.cssText = 'padding: 4px 10px; background: #4285f4; color: white; border: none; border-radius: 3px; font-size: 12px; font-weight: 500; cursor: pointer; transition: background 0.3s;';
-        btn.textContent = '+ Add Me';
-        btn.title = 'Add yourself as an attendee';
-        
-        // Create status span
-        const statusEl = document.createElement('span');
-        statusEl.className = 'pgcal-add-status';
-        statusEl.style.cssText = 'display: none; font-size: 11px;';
-        
-        btnContainer.appendChild(btn);
-        btnContainer.appendChild(statusEl);
-        
-        // Append to event element
-        info.el.appendChild(btnContainer);
-      } else {
-        console.log('⚠️ [Grid/List] Skipping button - missing eventId or title:', { eventId, eventTitle });
-      }
-    },
+      if (!eventId || !eventTitle) return;
 
-    eventClick: function (info) {
-      if (
-        pgcalSettings["use_tooltip"] === "true" ||
-        pgcalSettings["no_link"] === "true"
-      ) {
-        info.jsEvent.preventDefault(); // Prevent following link
-      }
-    },
+      const btnContainer = document.createElement('div');
+      btnContainer.style.cssText = 'margin-top:4px;display:flex;align-items:center;gap:8px;';
 
-    // Change view on window resize
-    windowResize: function (view) {
-      // Catch mobile chrome, which changes window size as nav bar appears
-      // so only fire if width has changed.
-      if (
-        window.innerWidth !== width &&
-        views.hasList &&
-        views.wantsToEnforceListviewOnMobile
-      ) {
-        if (pgcal_is_mobile()) {
-          calendar.changeView(views.listType);
-        } else {
-          calendar.changeView(selectedView);
+      const btn = document.createElement('button');
+      btn.className = 'pgcal-add-btn';
+      btn.style.cssText =
+        'padding:4px 10px;background:#4285f4;color:#fff;border:none;border-radius:3px;font-size:12px;cursor:pointer;';
+      btn.textContent = 'Checking…';
+      btn.disabled = true;
+
+      btnContainer.appendChild(btn);
+      info.el.appendChild(btnContainer);
+
+      (async () => {
+        try {
+          const userEmail = await pgcalGetCurrentUserEmail(ajaxurl);
+          if (!userEmail) {
+            btn.textContent = '+ Invite Me';
+            btn.disabled = false;
+            return;
+          }
+
+          const response = await fetch(ajaxurl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              action: 'pgcal_is_attendee',
+              event_id: eventId,
+              attendee_email: userEmail,
+              calendar_id: event.source?.id || '',
+            }),
+          });
+
+          const result = await response.json();
+
+          if (result?.data?.isAttendee) {
+            btn.textContent = 'Resend Invite';
+            btn.style.background = '#34a853';
+          } else {
+            btn.textContent = '+ Invite Me';
+          }
+
+          btn.disabled = false;
+        } catch (err) {
+          console.error('Attendee check failed:', err);
+          btn.textContent = '+ Invite Me';
+          btn.disabled = false;
         }
-      }
+      })();
     },
+
   };
 
   const pgcalOverrides = JSON.parse(pgcalSettings["fc_args"]);
   const pgCalArgs = pgcal_argmerge(pgcalDefaults, pgcalOverrides);
 
-  // console.log(pgcalSettings["fc_args"]); // DEBUG
-  // console.log(JSON.stringify(pgcalDefaults, null, 2)); // DEBUG
-  // console.log(JSON.stringify(pgCalArgs, null, 2)); // DEBUG
-
   const calendar = new FullCalendar.Calendar(calendarEl, pgCalArgs);
   calendar.render();
-
-  // Store calendar reference for map integration
   calendarEl._calendar = calendar;
 }
+
+
+
 
 /**
  * Render Google Map below the calendar
@@ -268,7 +766,7 @@ function pgcal_render_map(pgcalSettings, globalSettings) {
 function pgcal_createMap(mapId, pgcalSettings, globalSettings) {
   // Store settings globally for onclick handlers
   window.pgcal_current_settings = pgcalSettings;
-  
+
   const mapEl = document.getElementById(mapId);
   if (!mapEl) return;
 
@@ -499,7 +997,7 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
                 ` : ''}
                 ${pgcalSettings["show_add_to_calendar"] === "true" ? `
                   <div style="margin: 12px 0 8px 0;">
-                    <button class="pgcal-add-btn" data-event-id="${eventId}" data-event-url="${event.url || ''}" data-location="${location}" data-event-title="${event.title}" style="display: inline-block; padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background 0.3s;">Add to Calendar</button>
+                    <button class="pgcal-add-btn" data-event-id="${eventId}" data-event-url="${event.url || ''}" data-location="${location}" data-event-title="${event.title}" data-calendar-id="${event.source?.id || event.source?.googleCalendarId || ''}" style="display: inline-block; padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background 0.3s;" disabled>Checking...</button>
                     <span class="pgcal-add-status" style="display: none; margin-left: 10px; font-size: 14px;"></span>
                   </div>
                 ` : ''}
@@ -509,9 +1007,58 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
             pixelOffset: new google.maps.Size(0, -10)
           });
 
+          // Function to update button text based on attendee status
+          const updateMapPopupButton = async () => {
+            const popupBtn = document.querySelector(`#popup-${eventId} .pgcal-add-btn`);
+            if (!popupBtn) return;
+
+            try {
+              const userEmail = await pgcalGetCurrentUserEmail(window.pgcal_ajaxurl || ajaxurl);
+              if (!userEmail) {
+                popupBtn.textContent = '+ Invite Me';
+                popupBtn.title = 'Add yourself as an attendee';
+                popupBtn.disabled = false;
+                return;
+              }
+
+              const calendarId = event.source?.id || event.source?.googleCalendarId || '';
+              const calendarIds = pgcalSettings["gcal"] || '';
+              const res = await fetch(window.pgcal_ajaxurl || ajaxurl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                  action: 'pgcal_is_attendee',
+                  event_id: eventId,
+                  attendee_email: userEmail,
+                  calendar_ids: calendarIds
+                }),
+              });
+
+              const json = await res.json();
+              const isAttendee = json.success && json.data.isAttendee;
+
+              if (isAttendee) {
+                popupBtn.textContent = 'Resend Invite';
+                popupBtn.title = 'You are already an attendee - resend invitation';
+                popupBtn.style.background = '#34a853';
+              } else {
+                popupBtn.textContent = '+ Invite Me';
+                popupBtn.title = 'Add yourself as an attendee';
+              }
+              popupBtn.disabled = false;
+            } catch (error) {
+              console.error('Error updating map popup button:', error);
+              popupBtn.textContent = '+ Invite Me';
+              popupBtn.title = 'Add yourself as an attendee';
+              popupBtn.disabled = false;
+            }
+          };
+
           // Show info window by default if enabled
           if (pgcalSettings["popups_open"] === "true") {
             infoWindow.open(map, marker);
+            // Check attendee status when popup opens
+            setTimeout(updateMapPopupButton, 100);
           }
 
           // Allow clicking to toggle
@@ -520,6 +1067,8 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
               infoWindow.close();
             } else {
               infoWindow.open(map, marker);
+              // Check attendee status when popup opens
+              setTimeout(updateMapPopupButton, 100);
             }
           });
 
@@ -1142,13 +1691,13 @@ function pgcal_fetchAndAddEventMarkers(map, pgcalSettings, globalSettings) {
 // - We optimistically disable the button, call WP AJAX, and re-enable/fallback to URL on failure
 function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null, btn = null) {
   const eventId = event.id;
-  
+
   // If statusEl/btn not provided, try to find them (fallback for old calls)
   if (!statusEl) statusEl = document.querySelector(`[data-event-id="${eventId}"]`)?.parentElement?.querySelector('.pgcal-add-status');
   if (!btn) btn = document.querySelector(`[data-event-id="${eventId}"]`);
-  
+
   console.log('🔵 pgcal_addToCalendar called with event:', { eventId, event });
-  
+
   if (!statusEl || !btn) {
     console.error('❌ Missing status or button elements for event:', eventId);
     return;
@@ -1158,7 +1707,7 @@ function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null
   btn.disabled = true;
   btn.style.opacity = '0.7';
   statusEl.style.display = 'inline';
-  statusEl.textContent = 'Adding...';
+  statusEl.textContent = 'Inviting...';
   statusEl.style.color = '#ff9800';
 
   // Extract calendar ID from event URL if available (format: https://www.google.com/calendar/event?eid=COMPOSITE_ID&cid=CALENDAR_ID)
@@ -1203,14 +1752,14 @@ function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null
     })
     .then(data => {
       console.log('✅ Add to Calendar API Response (parsed):', data);
-      
+
       if (data.success) {
         console.log('🎉 API call succeeded!');
         // API call succeeded
-        statusEl.textContent = '✓ Added Event to your Google Calendar!';
+        statusEl.textContent = '✓ Invited! Check your email.';
         statusEl.style.color = '#4caf50';
         btn.style.background = '#4caf50';
-        
+
         setTimeout(() => {
           statusEl.style.display = 'none';
           btn.disabled = false;
@@ -1238,10 +1787,10 @@ function pgcal_addToCalendarFallback(calendarUrls, statusEl, btn) {
   statusEl.textContent = '✓ Opening calendar...';
   statusEl.style.color = '#4caf50';
   btn.style.background = '#4caf50';
-  
+
   // Open Google Calendar template in new tab
   window.open(calendarUrls.google, '_blank');
-  
+
   setTimeout(() => {
     statusEl.style.display = 'none';
     btn.disabled = false;
@@ -1249,89 +1798,188 @@ function pgcal_addToCalendarFallback(calendarUrls, statusEl, btn) {
   }, 2000);
 }
 
+// IF BREAKS RTEURN TO THIS VERSION OF THE EVENT DELEGATION LISTENER BELOW:
 /**
  * Attach event delegation listener for "Add to Calendar" buttons
  * This uses event delegation to catch all button clicks, even dynamically added ones
  */
-document.addEventListener('click', function(e) {
-  if (e.target.classList && e.target.classList.contains('pgcal-add-btn')) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const btn = e.target;
-    let eventId = btn.getAttribute('data-event-id');
-    const eventUrl = btn.getAttribute('data-event-url');
-    const location = btn.getAttribute('data-location');
-    const eventTitle = btn.getAttribute('data-event-title');
-    
-    // Extract event ID from URL if it's undefined or the string "undefined"
-    if (!eventId || eventId === 'undefined' || eventId === '') {
-      if (eventUrl && eventUrl.includes('eid=')) {
-        eventId = eventUrl.split('eid=')[1]?.split('&')[0] || '';
-        console.log('📤 Extracted event ID from URL:', eventId);
-      }
-    }
-    
-    console.log(' Full burron element:', btn);
-    console.log(' data-event-id attribute:', eventId);
-    console.log(' data-event-url attribute:', eventUrl);
-    console.log(' data-location attribute:', location);
-    console.log(' data-event-title attribute:', eventTitle);
-    console.log('all data attributes:', btn.dataset);
+// document.addEventListener('click', function (e) {
+//   if (!e.target.closest('.pgcal-add-btn')) return;
 
-    console.log('🔵 "Add to Calendar" button clicked!');
-    console.log('📝 Event ID:', eventId);
-    console.log('📍 Location:', location);
-    console.log('📌 Title:', eventTitle);
-    console.log('🔗 Event URL:', eventUrl);
-    
-    // Create event object from data attributes
-    const event = { 
-      id: eventId,
-      title: eventTitle,
-      url: eventUrl
-    };
-    
-    // Get pgcalSettings from window
-    let pgcalSettings = window.pgcal_current_settings;
-    if (!pgcalSettings) {
-      console.warn('⚠️ pgcalSettings not found, using defaults');
-      pgcalSettings = {};
+//   if (e.target.classList && e.target.classList.contains('pgcal-add-btn')) {
+//     e.preventDefault();
+//     e.stopPropagation();
+
+//     const btn = e.target;
+//     let eventId = btn.getAttribute('data-event-id');
+//     const eventUrl = btn.getAttribute('data-event-url');
+//     const location = btn.getAttribute('data-location');
+//     const eventTitle = btn.getAttribute('data-event-title');
+
+//     // Extract event ID from URL if it's undefined or the string "undefined"
+//     if (!eventId || eventId === 'undefined' || eventId === '') {
+//       if (eventUrl && eventUrl.includes('eid=')) {
+//         eventId = eventUrl.split('eid=')[1]?.split('&')[0] || '';
+//         console.log('📤 Extracted event ID from URL:', eventId);
+//       }
+//     }
+
+//     console.log(' Full burron element:', btn);
+//     console.log(' data-event-id attribute:', eventId);
+//     console.log(' data-event-url attribute:', eventUrl);
+//     console.log(' data-location attribute:', location);
+//     console.log(' data-event-title attribute:', eventTitle);
+//     console.log('all data attributes:', btn.dataset);
+
+//     console.log('🔵 "Add to Calendar" button clicked!');
+//     console.log('📝 Event ID:', eventId);
+//     console.log('📍 Location:', location);
+//     console.log('📌 Title:', eventTitle);
+//     console.log('🔗 Event URL:', eventUrl);
+
+//     // Create event object from data attributes
+//     const event = {
+//       id: eventId,
+//       title: eventTitle,
+//       url: eventUrl
+//     };
+
+//     // Get pgcalSettings from window
+//     let pgcalSettings = window.pgcal_current_settings;
+//     if (!pgcalSettings) {
+//       console.warn('⚠️ pgcalSettings not found, using defaults');
+//       pgcalSettings = {};
+//     }
+
+//     // Find status element - check parent container first (grid/list), then popup (map)
+//     let statusEl = btn.parentElement?.querySelector('.pgcal-add-status');
+
+//     if (!statusEl) {
+//       // Try map popup context
+//       const popup = btn.closest('.pgcal-popup-content');
+//       if (popup) {
+//         statusEl = popup.querySelector('.pgcal-add-status');
+//       }
+//     }
+
+//     if (!statusEl) {
+//       console.warn('⚠️ Status element not found in parent or popup, creating one');
+//       statusEl = document.createElement('span');
+//       statusEl.className = 'pgcal-add-status';
+//       statusEl.style.display = 'none';
+//       statusEl.style.marginLeft = '10px';
+//       statusEl.style.fontSize = '14px';
+//       btn.parentElement.appendChild(statusEl);
+//     }
+
+//     console.log('📊 Status element found/created:', statusEl);
+
+//     const calendarUrls = {
+//       google: `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&location=${encodeURIComponent(location)}`
+//     };
+
+//     console.log('🔗 Generated calendar URL');
+
+//     // Call the main handler
+//     pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl, btn);
+//   }
+// }, true); // Use capture phase to ensure we catch the event first
+
+/**
+ * Attach event delegation listener for "Add to Calendar" buttons
+ * This uses event delegation to catch all button clicks, even dynamically added ones
+ */
+document.addEventListener('click', function (e) {
+  const btn = e.target.closest('.pgcal-add-btn');
+  if (!btn) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  // 🔹 Find the surrounding FullCalendar event anchor
+  const eventLink = btn.closest('a.fc-event, a[href*="google.com/calendar/event"]');
+
+  // 🔹 Pull URL from anchor (not button)
+  const eventUrl = eventLink?.href || null;
+
+  // 🔹 Extract composite Google event ID (eid)
+  let eventId = btn.getAttribute('data-event-id');
+  if ((!eventId || eventId === 'undefined' || eventId === '') && eventUrl) {
+    try {
+      eventId = new URL(eventUrl).searchParams.get('eid');
+    } catch (err) {
+      console.error('❌ Failed to parse event URL:', err);
     }
-    
-    // Find status element - check parent container first (grid/list), then popup (map)
-    let statusEl = btn.parentElement?.querySelector('.pgcal-add-status');
-    
-    if (!statusEl) {
-      // Try map popup context
-      const popup = btn.closest('.pgcal-popup-content');
-      if (popup) {
-        statusEl = popup.querySelector('.pgcal-add-status');
-      }
-    }
-    
-    if (!statusEl) {
-      console.warn('⚠️ Status element not found in parent or popup, creating one');
-      statusEl = document.createElement('span');
-      statusEl.className = 'pgcal-add-status';
-      statusEl.style.display = 'none';
-      statusEl.style.marginLeft = '10px';
-      statusEl.style.fontSize = '14px';
-      btn.parentElement.appendChild(statusEl);
-    }
-    
-    console.log('📊 Status element found/created:', statusEl);
-    
-    const calendarUrls = {
-      google: `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&location=${encodeURIComponent(location)}`
-    };
-    
-    console.log('🔗 Generated calendar URL');
-    
-    // Call the main handler
-    pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl, btn);
   }
-}, true); // Use capture phase to ensure we catch the event first
+
+  // 🔹 Extract title from DOM if not provided
+  const eventTitle =
+    btn.getAttribute('data-event-title') ||
+    eventLink?.querySelector('.fc-event-title')?.textContent?.trim() ||
+    null;
+
+  // 🔹 Location (not present in FC DOM — keep null-safe)
+  const location = btn.getAttribute('data-location') || '';
+
+  console.log(' Full button element:', btn);
+  console.log(' 🔗 eventUrl:', eventUrl);
+  console.log(' 📝 eventId:', eventId);
+  console.log(' 📌 title:', eventTitle);
+  console.log(' 📍 location:', location);
+
+  // 🚨 Hard guard — never call API with null ID
+  if (!eventId) {
+    console.error('❌ Missing eventId — cannot add to calendar');
+    return;
+  }
+
+  // Create event object (unchanged shape)
+  const event = {
+    id: eventId,
+    title: eventTitle,
+    url: eventUrl
+  };
+
+  // Get pgcalSettings from window
+  let pgcalSettings = window.pgcal_current_settings;
+  if (!pgcalSettings) {
+    console.warn('⚠️ pgcalSettings not found, using defaults');
+    pgcalSettings = {};
+  }
+
+  // Find status element - check parent container first (grid/list), then popup (map)
+  let statusEl = btn.parentElement?.querySelector('.pgcal-add-status');
+
+  if (!statusEl) {
+    const popup = btn.closest('.pgcal-popup-content');
+    if (popup) {
+      statusEl = popup.querySelector('.pgcal-add-status');
+    }
+  }
+
+  if (!statusEl) {
+    console.warn('⚠️ Status element not found in parent or popup, creating one');
+    statusEl = document.createElement('span');
+    statusEl.className = 'pgcal-add-status';
+    statusEl.style.display = 'none';
+    statusEl.style.marginLeft = '10px';
+    statusEl.style.fontSize = '14px';
+    btn.parentElement.appendChild(statusEl);
+  }
+
+  console.log('📊 Status element found/created:', statusEl);
+
+  const calendarUrls = {
+    google: `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle || '')}&location=${encodeURIComponent(location || '')}`
+  };
+
+  console.log('🔗 Generated calendar URL');
+
+  // ✅ Call main handler (unchanged)
+  pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl, btn);
+
+}, true); // capture phase
+
 
 // Add a button to log current user details
 // document.addEventListener("DOMContentLoaded", function () {

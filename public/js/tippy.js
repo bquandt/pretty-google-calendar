@@ -29,7 +29,8 @@ function pgcal_tippyRender(info, currCal) {
     pgcal_urlify(info.event.extendedProps.description)
   );
 
-  toolContent += `<div class="toolloc">${pgcal_addToGoogle(info.event.url)}</div>`;
+  // Removed from the tooltip for now since add to calendar button is now added/handled in pgcal.js
+  // toolContent += `<div class="toolloc">${pgcal_addToGoogle(info.event.url)}</div>`;
 
   tippy(info.el, {
     trigger: "click",

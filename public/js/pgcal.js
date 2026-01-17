@@ -1,4 +1,6 @@
-// document.addEventListener("DOMContentLoaded", function () {
+//pgcal.js
+// Pretty Google Calendar - Main JavaScript File
+
 
 /**
  * Get global settings securely via Ajax
@@ -561,6 +563,12 @@ async function pgcalGetCurrentUserEmail(ajaxurl) {
 //   calendarEl._calendar = calendar;
 // }
 
+/**
+ * Main function that initializes and renders the FullCalendar with Google Calendar events and tooltips.
+ * @param {object} pgcalSettings Plugin settings
+ * @param {string} ajaxurl WordPress AJAX URL
+ * @returns {Promise<void>} A promise that resolves when the calendar has been rendered
+ */
 async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
   const globalSettings = await pgcalFetchGlobals(ajaxurl);
   window.pgcal_ajaxurl = ajaxurl;
@@ -722,7 +730,10 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
 
 
 /**
- * Render Google Map below the calendar
+ *  JUST TO CLARIFY: This function loads Google Maps API and creates a map below the calendar (if enabled) via call to pgcal_createMap() which is also in this file..
+ * @param {object} pgcalSettings Plugin settings
+ * @param {object} globalSettings Global settings
+ * @returns {void}
  */
 function pgcal_render_map(pgcalSettings, globalSettings) {
   const mapId = `pgcalmap-${pgcalSettings["id_hash"]}`;
@@ -761,7 +772,11 @@ function pgcal_render_map(pgcalSettings, globalSettings) {
 }
 
 /**
- * Create and initialize the Google Map
+ * This function actually Creates/Initializes the Google Map instance, sets center location, and adds event markers/circles.
+ * @param {string} mapId - The ID of the map container element
+ * @param {object} pgcalSettings - Plugin settings
+ * @param {object} globalSettings - Global settings
+ * @returns {void}
  */
 function pgcal_createMap(mapId, pgcalSettings, globalSettings) {
   // Store settings globally for onclick handlers
@@ -877,7 +892,12 @@ function pgcal_setUserLocationCenter(map, pgcalSettings) {
 }
 
 /**
- * Set map center based on coordinates or address
+ * Uses geolocation to center the map on the user's current location.
+ * If geolocation is not available or fails, it falls back to a specified center value.
+ *
+ * @param {object} map - The Google Map instance
+ * @param {string} centerValue - The fallback center value (coordinates or address)
+ * @returns {void}
  */
 function pgcal_setMapCenter(map, centerValue) {
   // Check if it's lat,lng coordinates
@@ -901,10 +921,15 @@ function pgcal_setMapCenter(map, centerValue) {
 }
 
 /**
- * Add event markers to the map for events with locations
+ * Loops through calendar events and adds markers/radius circles to the map for events with locations.
+ *
+ * @param {object} map - The Google Map instance
+ * @param {object} calendar - The FullCalendar instance
+ * @param {object} pgcalSettings - Plugin settings
+ * @returns {void}
  */
 function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
-  console.log('pgcal_addEventMarkersToMap called'); // DEBUG
+  // console.log('[pgcal_addEventMarkersToMap] pgcal_addEventMarkersToMap called'); // DEBUG
 
   const markers = window[`pgcal_map_markers_${pgcalSettings["id_hash"]}`] || [];
   const circles = window[`pgcal_map_circles_${pgcalSettings["id_hash"]}`] || [];
@@ -917,7 +942,8 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
 
   // Get current events from calendar
   const events = calendar.getEvents();
-  console.log('Events received by marker function:', events); // DEBUG
+  // console.log('[pgcal_addEventMarkersToMap] Events received by marker function:', events); // DEBUG
+  // console.log('[pgcal_addEventMarkersToMap] Events received by marker function:', events); // DEBUG
   const geocoder = new google.maps.Geocoder();
   const bounds = new google.maps.LatLngBounds();
   let hasLocations = false;
@@ -964,9 +990,10 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
           if (!eventId) {
             eventId = event.id || '';
           }
-          console.log('🔍 The new Full event ID extracted:', eventId);
-          console.log('🔗 Event URL:', event.url);
-          console.log('📝 event.id (short):', event.id);
+          // debug 
+          // console.log('[pgcal_addEventMarkersToMap] The new Full event ID extracted:', eventId);
+          // console.log('[pgcal_addEventMarkersToMap] Event URL:', event.url);
+          // console.log('[pgcal_addEventMarkersToMap] event.id (short):', event.id);
 
           // Create info window
           const infoWindow = new google.maps.InfoWindow({
@@ -1107,7 +1134,11 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
 }
 
 /**
- * Add radius toggle button to the map
+ *  Creates a button to toggle visibility of radius circles on the map.
+ *
+ * @param {object} map - The Google Map instance
+ * @param {object} pgcalSettings - Plugin settings
+ * @returns {void}
  */
 function pgcal_addRadiusToggle(map, pgcalSettings) {
   // Create toggle button
@@ -1150,7 +1181,10 @@ function pgcal_addRadiusToggle(map, pgcalSettings) {
 }
 
 /**
- * Add zoom level display to the map
+ * Adds a zoom level display widget to the map.
+ * @param {object} map - The Google Map instance
+ * @param {object} pgcalSettings - Plugin settings
+ * @returns {void}
  */
 function pgcal_addZoomDisplay(map, pgcalSettings) {
   // Create zoom display
@@ -1180,7 +1214,11 @@ function pgcal_addZoomDisplay(map, pgcalSettings) {
 }
 
 /**
- * Generate calendar URLs for "Add to Calendar" functionality
+ * Creates URLs for adding events to external calendars (Google Calendar, Outlook, iCal, etc.).
+ *
+ * @param {object} event - The event object
+ * @param {string} location - The event location
+ * @returns {object} An object containing URLs for different calendar services 
  */
 function pgcal_generateCalendarUrls(event, location) {
   const title = encodeURIComponent(event.title);
@@ -1228,7 +1266,10 @@ END:VCALENDAR`.replace(/\n/g, '%0A')
 }
 
 /**
- * Add map legend below the map container
+ * Displays a legend below the map explaining markers and icons.
+ * @param {string} mapId - The ID of the map container element
+ * @param {object} pgcalSettings - Plugin settings
+ * @returns {void}
  */
 function pgcal_addMapLegend(mapId, pgcalSettings) {
   const mapContainer = document.getElementById(mapId);
@@ -1331,7 +1372,12 @@ function pgcal_addMapLegend(mapId, pgcalSettings) {
 }
 
 /**
- * Add month/today navigation controls to the map
+ * Adds month/today navigation controls to the map.
+ *
+ * @param {object} map - The Google Map instance
+ * @param {object} pgcalSettings - Plugin settings
+ * @param {object} globalSettings - Global plugin settings
+ * @returns {void}
  */
 function pgcal_addDateNavigation(map, pgcalSettings, globalSettings) {
   // Initialize current date for navigation
@@ -1588,7 +1634,11 @@ function pgcal_addDateNavigation(map, pgcalSettings, globalSettings) {
 }
 
 /**
- * Refresh map markers with current date filter settings
+ * Updates map markers based on current date filters.
+ * @param {object} map - The Google Map instance
+ * @param {object} pgcalSettings - Plugin settings
+ * @param {object} globalSettings - Global plugin settings
+ * @returns {void}
  */
 function pgcal_refreshMapMarkers(map, pgcalSettings, globalSettings) {
   // Clear existing markers
@@ -1607,7 +1657,11 @@ function pgcal_refreshMapMarkers(map, pgcalSettings, globalSettings) {
 }
 
 /**
- * Fetch events directly from Google Calendar API for map-only mode
+ * Fetches events directly from Google Calendar API for map-only mode.
+ * @param {object} map - The Google Map instance
+ * @param {object} pgcalSettings - Plugin settings
+ * @param {object} globalSettings - Global plugin settings
+ * @returns {void}
  */
 function pgcal_fetchAndAddEventMarkers(map, pgcalSettings, globalSettings) {
   const calendarIds = pgcalSettings["gcal"].split(",");
@@ -1642,11 +1696,11 @@ function pgcal_fetchAndAddEventMarkers(map, pgcalSettings, globalSettings) {
     fetch(apiUrl)
       .then(response => response.json())
       .then(data => {
-        console.log('API Response:', data); // DEBUG
+        // console.log('[pgcal_fetchAndAddEventMarkers] API Response:', data); // DEBUG
         if (data.items && data.items.length > 0) {
-          console.log('First item from API:', data.items[0]); // DEBUG
-          console.log('First item.id:', data.items[0].id); // DEBUG
-          console.log('First item.htmlLink:', data.items[0].htmlLink); // DEBUG
+          // console.log('[pgcal_fetchAndAddEventMarkers] First item from API:', data.items[0]); // DEBUG
+          // console.log('[pgcal_fetchAndAddEventMarkers] First item.id:', data.items[0].id); // DEBUG
+          // console.log('[pgcal_fetchAndAddEventMarkers] First item.htmlLink:', data.items[0].htmlLink); // DEBUG
           // Convert Google Calendar events to FullCalendar-like format
           const events = data.items.map(item => ({
             id: item.id,
@@ -1660,8 +1714,8 @@ function pgcal_fetchAndAddEventMarkers(map, pgcalSettings, globalSettings) {
             url: item.htmlLink
           }));
 
-          console.log('Converted events:', events); // DEBUG
-          console.log('Events with locations:', events.filter(e => e.extendedProps.location)); // DEBUG
+          // console.log('[pgcal_fetchAndAddEventMarkers] Converted events:', events); // DEBUG
+          // console.log('[pgcal_fetchAndAddEventMarkers] Events with locations:', events.filter(e => e.extendedProps.location)); // DEBUG
 
           // Create a fake calendar object for compatibility
           const fakeCalendar = {
@@ -1671,12 +1725,12 @@ function pgcal_fetchAndAddEventMarkers(map, pgcalSettings, globalSettings) {
           // Add markers to map
           pgcal_addEventMarkersToMap(map, fakeCalendar, pgcalSettings);
         } else {
-          console.log('No events found in API response'); // DEBUG
+          console.log('[] [pgcal_fetchAndAddEventMarkers] No events found in API response'); // DEBUG
         }
       })
       .catch(error => {
-        console.error('Error fetching calendar events:', error);
-        console.log('API URL:', apiUrl); // DEBUG
+        console.error('[pgcal_fetchAndAddEventMarkers] Error fetching calendar events:', error);
+        console.log('[pgcal_fetchAndAddEventMarkers] API URL:', apiUrl); // DEBUG
       });
   });
 }
@@ -1684,11 +1738,19 @@ function pgcal_fetchAndAddEventMarkers(map, pgcalSettings, globalSettings) {
 /**
  * Add to Calendar - Primary method using Google Calendar API
  * Falls back to calendar URL method if API call fails
+ *
+ * @param {object} event - The event object
+ * @param {object} calendarUrls - Calendar URLs
+ * @param {object} pgcalSettings - Plugin settings
+ * @param {HTMLElement} [statusEl=null] - Status element
+ * @param {HTMLElement} [btn=null] - Button element
+ * @returns {void}
+ * Notes:
+ * Add-to-calendar flow (map mode):
+ * - event.id is the composite eid from Google (base64 of "<eventId> <calendarId>@g")
+ * - calendarId is extracted from event.url cid= if present; otherwise we send primary and let PHP decode the composite
+ * - We optimistically disable the button, call WP AJAX, and re-enable/fallback to URL on failure
  */
-// Add-to-calendar flow (map mode):
-// - event.id is the composite eid from Google (base64 of "<eventId> <calendarId>@g")
-// - calendarId is extracted from event.url cid= if present; otherwise we send primary and let PHP decode the composite
-// - We optimistically disable the button, call WP AJAX, and re-enable/fallback to URL on failure
 function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null, btn = null) {
   const eventId = event.id;
 
@@ -1696,7 +1758,7 @@ function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null
   if (!statusEl) statusEl = document.querySelector(`[data-event-id="${eventId}"]`)?.parentElement?.querySelector('.pgcal-add-status');
   if (!btn) btn = document.querySelector(`[data-event-id="${eventId}"]`);
 
-  console.log('🔵 pgcal_addToCalendar called with event:', { eventId, event });
+  // console.log('[pgcal_addToCalendar] called with event:', { eventId, event });
 
   if (!statusEl || !btn) {
     console.error('❌ Missing status or button elements for event:', eventId);
@@ -1721,12 +1783,12 @@ function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null
   }
   // If still no calendar ID from URL, send the raw event ID (composite) and let PHP decode it
   if (calendarId === 'primary') {
-    console.log('📋 Using default calendar ID (primary), PHP will extract from composite ID if needed');
+    console.log('[pgcal_addToCalendar] Using default calendar ID (primary), PHP will extract from composite ID if needed');
   }
 
   const requestBody = `action=pgcal_add_to_calendar&event_id=${encodeURIComponent(eventId)}&calendar_id=${encodeURIComponent(calendarId)}`;
-  console.log('📤 Sending AJAX request to:', pgcal_vars.ajaxurl);
-  console.log('📋 Request body:', requestBody);
+  // console.log('[pgcal_addToCalendar] Sending AJAX request to:', pgcal_vars.ajaxurl);
+  // console.log('[pgcal_addToCalendar] Request body:', requestBody);
 
   // First attempt: Call WordPress AJAX handler to add attendee via Google Calendar API
   fetch(pgcal_vars.ajaxurl, {
@@ -1737,8 +1799,8 @@ function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null
     body: requestBody,
   })
     .then(response => {
-      console.log('📥 Response status:', response.status, response.statusText);
-      console.log('📥 Response headers:', {
+      console.log('[pgcal_addToCalendar] Response status:', response.status, response.statusText);
+      console.log('[pgcal_addToCalendar] Response headers:', {
         'content-type': response.headers.get('content-type')
       });
       return response.text().then(text => {
@@ -1751,10 +1813,10 @@ function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null
       });
     })
     .then(data => {
-      console.log('✅ Add to Calendar API Response (parsed):', data);
+      console.log('[pgcal_addToCalendar] Add to Calendar API Response (parsed):', data);
 
       if (data.success) {
-        console.log('🎉 API call succeeded!');
+        console.log('[pgcal_addToCalendar] API call succeeded!');
         // API call succeeded
         statusEl.textContent = '✓ Invited! Check your email.';
         statusEl.style.color = '#4caf50';
@@ -1766,22 +1828,28 @@ function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null
           btn.style.opacity = '1';
         }, 2000);
       } else {
-        // API call failed, use fallback: open calendar URL
-        console.warn('⚠️ API request returned success=false. Error:', data.data?.message || data.message);
-        console.log('📞 Falling back to calendar URL method...');
+        // API call failed, use fallback: open generated calendar URL
+        console.warn('[pgcal_addToCalendar] API request returned success=false. Error:', data.data?.message || data.message);
+        console.log('[pgcal_addToCalendar] Falling back to calendar URL method...');
         pgcal_addToCalendarFallback(calendarUrls, statusEl, btn);
       }
     })
     .catch(error => {
       // Network error or other issue, use fallback
-      console.error('❌ Error calling add to calendar API:', error);
-      console.log('📞 Falling back to calendar URL method...');
+      console.error('[pgcal_addToCalendar] Error calling add to calendar API:', error);
+      console.log('[pgcal_addToCalendar] Falling back to calendar URL method...');
       pgcal_addToCalendarFallback(calendarUrls, statusEl, btn);
     });
 }
 
 /**
- * Fallback method: Open calendar URL in new tab
+ * Fallback method: Open the generated Google Calendar URL in new tab. This essentially makes a duplicate of an event,
+ * but lacks attendee invitation/updates to an event.
+ *
+ * @param {object} calendarUrls - Calendar URLs
+ * @param {HTMLElement} statusEl - Status element
+ * @param {HTMLElement} btn - Button element
+ * @returns {void}
  */
 function pgcal_addToCalendarFallback(calendarUrls, statusEl, btn) {
   statusEl.textContent = '✓ Opening calendar...';
@@ -1798,7 +1866,7 @@ function pgcal_addToCalendarFallback(calendarUrls, statusEl, btn) {
   }, 2000);
 }
 
-// IF BREAKS RTEURN TO THIS VERSION OF THE EVENT DELEGATION LISTENER BELOW:
+// IF BREAKS RETURN TO THIS VERSION OF THE EVENT DELEGATION LISTENER BELOW:
 /**
  * Attach event delegation listener for "Add to Calendar" buttons
  * This uses event delegation to catch all button clicks, even dynamically added ones
@@ -1888,6 +1956,10 @@ function pgcal_addToCalendarFallback(calendarUrls, statusEl, btn) {
 /**
  * Attach event delegation listener for "Add to Calendar" buttons
  * This uses event delegation to catch all button clicks, even dynamically added ones
+ * This helps in cases where data attributes may be missing by extracting from surrounding DOM. Dirty fix for now, but it works.
+ *
+ * @param {MouseEvent} e - The click event
+ * @returns {void}
  */
 document.addEventListener('click', function (e) {
   const btn = e.target.closest('.pgcal-add-btn');
@@ -1921,11 +1993,12 @@ document.addEventListener('click', function (e) {
   // 🔹 Location (not present in FC DOM — keep null-safe)
   const location = btn.getAttribute('data-location') || '';
 
-  console.log(' Full button element:', btn);
-  console.log(' 🔗 eventUrl:', eventUrl);
-  console.log(' 📝 eventId:', eventId);
-  console.log(' 📌 title:', eventTitle);
-  console.log(' 📍 location:', location);
+  //debug logs
+  // console.log('Full button element:', btn);
+  // console.log('eventUrl:', eventUrl);
+  // console.log('eventId:', eventId);
+  // console.log('title:', eventTitle);
+  // console.log('location:', location);
 
   // 🚨 Hard guard — never call API with null ID
   if (!eventId) {
@@ -1967,43 +2040,18 @@ document.addEventListener('click', function (e) {
     btn.parentElement.appendChild(statusEl);
   }
 
-  console.log('📊 Status element found/created:', statusEl);
+  // console.log('Status element found/created:', statusEl);
 
   const calendarUrls = {
     google: `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle || '')}&location=${encodeURIComponent(location || '')}`
   };
 
-  console.log('🔗 Generated calendar URL');
+  // console.log('Generated calendar URL');
 
   // ✅ Call main handler (unchanged)
   pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl, btn);
 
 }, true); // capture phase
 
-
-// Add a button to log current user details
-// document.addEventListener("DOMContentLoaded", function () {
-//   const logUserButton = document.createElement("button");
-//   logUserButton.textContent = "Log The Current User NOW";
-//   logUserButton.style.margin = "10px";
-//   logUserButton.addEventListener("click", function () {
-//     fetch(pgcal_vars.ajaxurl, {
-//       method: "POST",
-//       headers: {
-//         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-//       },
-//       body: "action=pgcal_log_user_details",
-//     })
-//       .then((response) => response.json())
-//       .then((data) => {
-//         console.log("User Details:", data);
-//       })
-//       .catch((error) => {
-//         console.error("Error logging user details:", error);
-//       });
-//   });
-
-//   document.body.appendChild(logUserButton);
-// });
 
 

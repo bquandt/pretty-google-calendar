@@ -635,12 +635,12 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
     },
 
     eventClick: function (info) {
-      // 🚫 Stop FullCalendar from navigating to Google Calendar
+      // Stop FullCalendar from navigating to Google Calendar on event click , dirtyfix
       info.jsEvent.preventDefault();
       info.jsEvent.stopPropagation();
 
-      // Optional debug
-      console.log('🛑 FullCalendar eventClick intercepted', info.event.id);
+      //  debug
+      console.log('[pgcal_render_calendar] FullCalendar eventClick intercepted', info.event.id);
     },
 
     eventDidMount: function (info) {
@@ -648,6 +648,11 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
         pgcal_tippyRender(info, currCal);
       }
 
+      const currentTime = new Date();
+      const eventEndTime = info.event.end || info.event.start;
+      if (eventEndTime && eventEndTime < currentTime) {
+        return; // Skip past events when adding the 'invite me' buttons
+      }
       const event = info.event;
 
       // Extract event ID
@@ -1022,7 +1027,7 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
                     </p>
                   </div>
                 ` : ''}
-                ${pgcalSettings["show_add_to_calendar"] === "true" ? `
+                ${!isEventPast && pgcalSettings["show_add_to_calendar"] === "true" ? `
                   <div style="margin: 12px 0 8px 0;">
                     <button class="pgcal-add-btn" data-event-id="${eventId}" data-event-url="${event.url || ''}" data-location="${location}" data-event-title="${event.title}" data-calendar-id="${event.source?.id || event.source?.googleCalendarId || ''}" style="display: inline-block; padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background 0.3s;" disabled>Checking...</button>
                     <span class="pgcal-add-status" style="display: none; margin-left: 10px; font-size: 14px;"></span>
@@ -1968,13 +1973,13 @@ document.addEventListener('click', function (e) {
   e.preventDefault();
   e.stopPropagation();
 
-  // 🔹 Find the surrounding FullCalendar event anchor
+  // Find the surrounding FullCalendar event anchor
   const eventLink = btn.closest('a.fc-event, a[href*="google.com/calendar/event"]');
 
-  // 🔹 Pull URL from anchor (not button)
+  // Pull URL from anchor (not button)
   const eventUrl = eventLink?.href || null;
 
-  // 🔹 Extract composite Google event ID (eid)
+  //  Extract composite Google event ID (eid)
   let eventId = btn.getAttribute('data-event-id');
   if ((!eventId || eventId === 'undefined' || eventId === '') && eventUrl) {
     try {
@@ -1984,13 +1989,13 @@ document.addEventListener('click', function (e) {
     }
   }
 
-  // 🔹 Extract title from DOM if not provided
+  //  Extract title from DOM if not provided
   const eventTitle =
     btn.getAttribute('data-event-title') ||
     eventLink?.querySelector('.fc-event-title')?.textContent?.trim() ||
     null;
 
-  // 🔹 Location (not present in FC DOM — keep null-safe)
+  //  Location (not present in FC DOM — keep null-safe)
   const location = btn.getAttribute('data-location') || '';
 
   //debug logs

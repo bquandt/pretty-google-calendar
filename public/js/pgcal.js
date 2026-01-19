@@ -534,7 +534,7 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
           let buttonHTML = '';
           if (isLoggedIn) {
             // LOGGED IN: Show invite button with async attendee checking
-            buttonHTML = `<button class="pgcal-add-btn" data-event-id="${eventId}" data-event-url="${event.url || ''}" data-location="${location}" data-event-title="${event.title}" data-calendar-id="${event.source?.id || event.source?.googleCalendarId || ''}" data-mode="invite" style="display: inline-block; padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background 0.3s;" disabled>Checking...</button>`;
+            buttonHTML = `<button class="pgcal-add-btn" data-event-id="${eventId}" data-event-url="${event.url || ''}" data-location="${location}" data-event-title="${event.title}" data-calendar-id="${event.source?.id || event.source?.googleCalendarId || ''}" data-mode="invite" data-resend="false" style="display: inline-block; padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background 0.3s;" disabled>Checking...</button>`;
           } else {
             // NOT LOGGED IN: Show copy to calendar button (no async checking)
             buttonHTML = `<button class="pgcal-add-btn" data-event-id="${eventId}" data-event-url="${event.url || ''}" data-location="${location}" data-event-title="${event.title}" data-start="${event.start.toISOString()}" data-end="${(event.end || event.start).toISOString()}" data-mode="copy" style="display: inline-block; padding: 10px 20px; background: #ff9800; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background 0.3s;">Copy to Calendar</button>`;
@@ -611,15 +611,18 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
                 popupBtn.textContent = 'Resend Invite';
                 popupBtn.title = 'You are already an attendee - resend invitation';
                 popupBtn.style.background = '#34a853';
+                popupBtn.setAttribute('data-resend', 'true');  // SET TRUE
               } else {
                 popupBtn.textContent = '+ Invite Me';
                 popupBtn.title = 'Add yourself as an attendee';
+                popupBtn.setAttribute('data-resend', 'false');  // force FALSE
               }
               popupBtn.disabled = false;
             } catch (error) {
               console.error('Error updating map popup button:', error);
               popupBtn.textContent = '+ Invite Me';
               popupBtn.title = 'Add yourself as an attendee';
+              popupBtn.setAttribute('data-resend', 'false');  // DEFAULT TO FALSE ON ERROR
               popupBtn.disabled = false;
             }
           };

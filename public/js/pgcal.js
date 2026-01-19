@@ -29,278 +29,6 @@ async function pgcalFetchGlobals(ajaxurl) {
 }
 
 /**
- * Check if current user is an attendee of an event
- * @param {string} calendarId - The calendar ID (can be empty, will be extracted from composite ID)
- * @param {string} eventId - The event ID (composite or regular)
- * @param {string} apiKey - Google API key
- * @param {string} userEmail - Current user's email
- * @param {string} calendarIds - Comma-separated list of calendar IDs from settings (fallback)
- * @returns {Promise<boolean>} - True if user is an attendee
- */
-
-// IF BREAKS, REVERT TO THIS VERSION:
-// async function pgcalCheckUserIsAttendee(calendarId, eventId, apiKey, userEmail, calendarIds = '') {
-//   if (!userEmail || !eventId || !apiKey) {
-//     console.log('⚠️ Missing required parameters for attendee check:', { userEmail, eventId, apiKey });
-//     return false;
-//   }
-
-//   try {
-//     // Try to extract calendar ID from composite event ID (base64 encoded)
-//     let extractedCalendarId = calendarId;
-//     let extractedEventId = eventId;
-
-//     if (!extractedCalendarId || extractedCalendarId === '') {
-//       try {
-//         // Composite event ID is base64 encoded: "<eventId> <calendarId>@g" or "<eventId> <calendarId>@group.calendar.google.com"
-//         const decoded = atob(eventId);
-//         console.log('🔓 Decoded composite ID:', decoded);
-
-//         // Split by space to get event ID and calendar ID
-//         const parts = decoded.split(' ');
-//         if (parts.length >= 2) {
-//           extractedEventId = parts[0];
-//           // Calendar ID is everything after the space, may end with @g or @group.calendar.google.com
-//           let calPart = parts.slice(1).join(' ');
-//           // Normalize @g to @group.calendar.google.com
-//           if (calPart.endsWith('@g')) {
-//             calPart = calPart.replace('@g', '@group.calendar.google.com');
-//           }
-//           extractedCalendarId = calPart;
-//           console.log('✅ Extracted from composite:', { eventId: extractedEventId, calendarId: extractedCalendarId });
-//         }
-//       } catch (e) {
-//         console.log('⚠️ Failed to decode composite ID, trying as regular ID');
-//       }
-//     }
-
-//     // If still no calendar ID, try each calendar from settings
-//     if (!extractedCalendarId || extractedCalendarId === '') {
-//       if (calendarIds) {
-//         const calIds = calendarIds.split(',').map(id => id.trim()).filter(id => id);
-//         console.log('🔄 Trying calendar IDs from settings:', calIds);
-
-//         for (const tryCalId of calIds) {
-//           const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(tryCalId)}/events/${encodeURIComponent(extractedEventId)}?key=${apiKey}`;
-
-//           try {
-//             const response = await fetch(url);
-//             if (response.ok) {
-//               extractedCalendarId = tryCalId;
-//               console.log('✅ Found event in calendar:', tryCalId);
-//               break;
-//             }
-//           } catch (e) {
-//             // Continue to next calendar
-//           }
-//         }
-//       }
-
-//       if (!extractedCalendarId || extractedCalendarId === '') {
-//         console.log('❌ Could not determine calendar ID');
-//         return false;
-//       }
-//     }
-
-//     // Now fetch event details with the correct calendar and event IDs
-//     //Base url https://www.googleapis.com/calendar/v3/calendars/calendarId/events/eventId
-//     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(extractedCalendarId)}/events/${encodeURIComponent(extractedEventId)}?key=${apiKey}&maxAttendees=30`;
-
-//     console.log('🔍 Checking attendees for event:', extractedEventId, 'in calendar:', extractedCalendarId);
-//     console.log('📞 API URL:', url);
-
-//     const response = await fetch(url);
-//     if (!response.ok) {
-//       console.log('⚠️ Failed to fetch event details:', response.status, response.statusText);
-//       const errorText = await response.text();
-//       console.log('⚠️ Error response:', errorText);
-//       return false;
-//     }
-
-//     const eventData = await response.json();
-
-//     // Log the FULL event data to see what we're getting
-//     console.log('📦 FULL API Response:', eventData);
-//     console.log('👥 Attendees field:', eventData.attendees);
-//     console.log('👤 Looking for user email:', userEmail);
-
-//     // Check if user is in attendees list
-//     if (eventData.attendees && Array.isArray(eventData.attendees)) {
-//       console.log('✅ Attendees array found with', eventData.attendees.length, 'attendees');
-//       console.log('📋 All attendees:', eventData.attendees.map(a => a.email));
-
-//       const isAttendee = eventData.attendees.some(attendee => 
-//         attendee.email && attendee.email.toLowerCase() === userEmail.toLowerCase()
-//       );
-//       console.log(isAttendee ? '✅ User is already an attendee' : '❌ User is not an attendee');
-//       return isAttendee;
-//     }
-
-//     console.log('ℹ️ No attendees list found for event');
-//     console.log('🔑 Available event fields:', Object.keys(eventData));
-//     return false;
-//   } catch (error) {
-//     console.error('❌ Error checking attendees:', error);
-//     return false;
-//   }
-// }
-
-//Disabled for now, moving to server-side check in init.php
-// async function pgcalCheckUserIsAttendee(
-//   calendarId,
-//   eventId,
-//   apiKey,
-//   userEmail,
-//   calendarIds = ''
-// ) {
-//   if (!userEmail || !eventId || !apiKey) {
-//     console.log('⚠️ Missing required parameters', { userEmail, eventId, apiKey });
-//     return false;
-//   }
-
-//   try {
-//     let extractedEventId = eventId;
-//     let extractedCalendarId = calendarId || '';
-
-//     /* --------------------------------------------------
-//      * 1. Decode composite/base64 ID if present
-//      * -------------------------------------------------- */
-
-//     try {
-//       const decoded = atob(eventId);
-//       if (decoded.includes(' ')) {
-//         const parts = decoded.split(' ');
-//         extractedEventId = parts[0];
-
-//         if (!extractedCalendarId) {
-//           let calPart = parts.slice(1).join(' ');
-//           if (calPart.endsWith('@g')) {
-//             calPart = calPart.replace('@g', '@group.calendar.google.com');
-//           }
-//           extractedCalendarId = calPart;
-//         }
-
-//         console.log('🔓 Decoded composite ID:', {
-//           eventId: extractedEventId,
-//           calendarId: extractedCalendarId,
-//         });
-//       }
-//     } catch {
-//       // not base64, ignore
-//     }
-
-//     /* --------------------------------------------------
-//      * 2. Build calendars to try
-//      * -------------------------------------------------- */
-
-//     let calendarsToTry = [];
-
-//     if (extractedCalendarId) calendarsToTry.push(extractedCalendarId);
-
-//     if (calendarIds) {
-//       calendarsToTry.push(
-//         ...calendarIds
-//           .split(',')
-//           .map(id => id.trim())
-//           .filter(Boolean)
-//       );
-//     }
-
-//     calendarsToTry = [...new Set(calendarsToTry)];
-
-//     if (calendarsToTry.length === 0) {
-//       console.log('❌ No calendar IDs available');
-//       return false;
-//     }
-
-//     console.log('🔄 Calendars to try:', calendarsToTry);
-
-//     /* --------------------------------------------------
-//      * 3. Fetch ALL events (curl-equivalent)
-//      * -------------------------------------------------- */
-
-//     for (const calId of calendarsToTry) {
-//       const listUrl =
-//         `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events` +
-//         `?timeMin=1970-01-01T00:00:00Z` +
-//         `&maxResults=2500` +
-//         `&singleEvents=true` +
-//         `&key=${apiKey}`;
-
-//       console.log('📞 events.list URL:', listUrl);
-
-//       let response;
-//       try {
-//         response = await fetch(listUrl);
-//       } catch {
-//         console.log('⚠️ Fetch failed for calendar:', calId);
-//         continue;
-//       }
-
-//       if (!response.ok) {
-//         console.log('⚠️ events.list failed:', response.status);
-//         continue;
-//       }
-
-//       const data = await response.json();
-
-//       if (!Array.isArray(data.items) || data.items.length === 0) {
-//         console.log('ℹ️ No events returned for calendar:', calId);
-//         continue;
-//       }
-
-//       console.log(`📦 ${data.items.length} events fetched`);
-
-//       /* --------------------------------------------------
-//        * 4. Match event client-side
-//        * -------------------------------------------------- */
-
-//       const matchedEvent = data.items.find(ev =>
-//         ev.id === extractedEventId ||
-//         ev.iCalUID === extractedEventId ||
-//         ev.id === eventId ||
-//         ev.iCalUID === eventId
-//       );
-
-//       if (!matchedEvent) {
-//         console.log('ℹ️ Event not found in this calendar');
-//         continue;
-//       }
-
-//       console.log('✅ Matched event:', matchedEvent.id);
-
-//       /* --------------------------------------------------
-//        * 5. Check attendees
-//        * -------------------------------------------------- */
-
-//       const attendees = matchedEvent.attendees || [];
-
-//       console.log('👥 Attendees:', attendees.map(a => a.email));
-
-//       const isAttendee = attendees.some(
-//         a => a.email && a.email.toLowerCase() === userEmail.toLowerCase()
-//       );
-
-//       console.log(
-//         isAttendee
-//           ? '✅ User is already an attendee'
-//           : '❌ User is not an attendee'
-//       );
-
-//       return isAttendee;
-//     }
-
-//     console.log('❌ Event not found in any calendar');
-//     return false;
-
-//   } catch (error) {
-//     console.error('❌ Error checking attendees:', error);
-//     return false;
-//   }
-// }
-
-
-/**
  * Get current user's email (placeholder - needs implementation based on WordPress/plugin setup)
  * @returns {Promise<string>} - User's email address
  */
@@ -328,240 +56,6 @@ async function pgcalGetCurrentUserEmail(ajaxurl) {
     return '';
   }
 }
-// If broken, return to this version:
-// async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
-//   const globalSettings = await pgcalFetchGlobals(ajaxurl);
-
-//   // Store ajaxurl globally for use in async functions
-//   window.pgcal_ajaxurl = ajaxurl;
-
-//   // console.log(globalSettings["google_api"]); // DEBUG
-
-//   // Check if we're in map-only mode
-//   if (pgcalSettings["show_map"] === "true") {
-//     // Map-only mode - skip calendar rendering and go straight to map
-//     pgcal_render_map(pgcalSettings, globalSettings);
-//     return;
-//   }
-
-//   // Calendar-only mode - render calendar as normal
-//   const currCal = `pgcalendar-${pgcalSettings["id_hash"]}`;
-//   const calendarEl = document.getElementById(currCal);
-//   if (!calendarEl) return; // Exit if no calendar container
-
-//   calendarEl.innerHTML = "";
-//   let width = window.innerWidth;
-
-//   const views = pgcal_resolve_views(pgcalSettings);
-//   const cals = pgcal_resolve_cals(pgcalSettings);
-
-//   // console.table(cals); // DEBUG
-//   // console.table(pgcalSettings); // DEBUG
-//   // console.table(views); // DEBUG
-
-//   const toolbarLeft = pgcal_is_truthy(pgcalSettings["show_today_button"])
-//     ? "prev,next today"
-//     : "prev,next";
-//   // Always show the month name above the calendar in Month view
-//   let toolbarCenter;
-//   if (views.initial === "dayGridMonth" || (pgcalSettings["force_month_title"] === "true")) {
-//     toolbarCenter = "title";
-//   } else {
-//     toolbarCenter = pgcal_is_truthy(pgcalSettings["show_title"]) ? "title" : "";
-//   }
-//   const toolbarRight = views.length > 1 ? views.all.join(",") : "";
-
-//   let selectedView = views.initial;
-
-//   const pgcalDefaults = {
-//     locale: pgcalSettings["locale"],
-//     googleCalendarApiKey: globalSettings["google_api"],
-
-//     eventSources: cals,
-
-//     views: {
-//       // Options apply to dayGridMonth, dayGridWeek, and dayGridDay views
-//       dayGrid: {
-//         eventTimeFormat: {
-//           hour: "numeric",
-//           minute: "2-digit",
-//           meridiem: "short",
-//         },
-//       },
-//       // Custom List View
-//       listCustom: {
-//         type: "list",
-//         duration: { days: parseInt(pgcalSettings["custom_days"]) },
-//         buttonText: pgcalSettings["custom_list_button"],
-//       },
-//     },
-
-//     // Day grid options
-//     eventDisplay: "block", // Adds border and bocks to events instead of bulleted list (default)
-//     height: "auto",
-//     fixedWeekCount: false, // True: 6 weeks, false: flex for month
-
-//     // List options
-//     listDayFormat: { weekday: "long", month: "long", day: "numeric" },
-
-//     initialView: views.initial,
-
-//     headerToolbar: {
-//       left: toolbarLeft,
-//       center: toolbarCenter,
-//       right: toolbarRight,
-//     },
-
-//     viewDidMount: function (arg) {
-//       // Ensure the month name is always shown above the calendar in Month view
-//       if (arg.view.type === "dayGridMonth") {
-//         const calendarApi = arg.view.calendar;
-//         calendarApi.setOption("headerToolbar", {
-//           left: toolbarLeft,
-//           center: "title",
-//           right: toolbarRight
-//         });
-//       } else {
-//         const calendarApi = arg.view.calendar;
-//         calendarApi.setOption("headerToolbar", {
-//           left: toolbarLeft,
-//           center: toolbarCenter,
-//           right: toolbarRight
-//         });
-//       }
-//     },
-
-//     eventDidMount: function (info) {
-//       if (pgcalSettings["use_tooltip"] === "true") {
-//         pgcal_tippyRender(info, currCal);
-//       }
-
-//       // Add "Add to Calendar" button to grid/list events (always enabled)
-//       const event = info.event;
-
-//       // Extract event ID from URL (composite eid) or fallback to event.id
-//       let eventId = '';
-//       if (event.url && event.url.includes('eid=')) {
-//         eventId = event.url.split('eid=')[1]?.split('&')[0] || '';
-//         console.log('🔍 [Grid/List] Extracted composite event ID from URL:', eventId);
-//       }
-//       if (!eventId) {
-//         eventId = event.id || '';
-//         console.log('🔍 [Grid/List] Using fallback event.id:', eventId);
-//       }
-
-//       const location = event.extendedProps.location || '';
-//       const eventTitle = event.title || '';
-//       const eventUrl = event.url || '';
-
-//       // Only add button if we have required data
-//       if (eventId && eventTitle) {
-//         console.log('✅ [Grid/List] Adding button for event:', eventTitle, '| eventId:', eventId);
-
-//         // Create button container
-//         const btnContainer = document.createElement('div');
-//         btnContainer.style.cssText = 'margin-top: 4px; display: flex; align-items: center; gap: 8px;';
-
-//         // Create the button
-//         const btn = document.createElement('button');
-//         btn.className = 'pgcal-add-btn';
-//         btn.setAttribute('data-event-id', eventId);
-//         btn.setAttribute('data-event-url', eventUrl);
-//         btn.setAttribute('data-location', location);
-//         btn.setAttribute('data-event-title', eventTitle);
-//         btn.style.cssText = 'padding: 4px 10px; background: #4285f4; color: white; border: none; border-radius: 3px; font-size: 12px; font-weight: 500; cursor: pointer; transition: background 0.3s;';
-//         btn.textContent = 'Checking...';
-//         btn.disabled = true;
-//         btn.title = 'Checking attendance status';
-
-//         // Create status span
-//         const statusEl = document.createElement('span');
-//         statusEl.className = 'pgcal-add-status';
-//         statusEl.style.cssText = 'display: none; font-size: 11px;';
-
-//         btnContainer.appendChild(btn);
-//         btnContainer.appendChild(statusEl);
-
-//         // Append to event element
-//         info.el.appendChild(btnContainer);
-
-//         // Check attendee status asynchronously
-//         (async () => {
-//           try {
-//             const userEmail = await pgcalGetCurrentUserEmail(ajaxurl);
-//             if (!userEmail) {
-//               btn.textContent = '+ Invite Me';
-//               btn.title = 'Add yourself as an attendee';
-//               btn.disabled = false;
-//               return;
-//             }
-
-//             // Extract calendar ID from event source or use settings
-//             const calendarId = event.source?.id || event.source?.googleCalendarId || '';
-//             const calendarIds = pgcalSettings["gcal"] || '';
-//             const isAttendee = await pgcalCheckUserIsAttendee(calendarId, eventId, globalSettings["google_api"], userEmail, calendarIds);
-
-//             if (isAttendee) {
-//               btn.textContent = 'Resend Invite';
-//               btn.title = 'You are already an attendee - resend invitation';
-//               btn.style.background = '#34a853';
-//             } else {
-//               btn.textContent = '+ Invite Me';
-//               btn.title = 'Add yourself as an attendee';
-//             }
-//             btn.disabled = false;
-//           } catch (error) {
-//             console.error('Error checking attendee status:', error);
-//             btn.textContent = '+ Invite Me';
-//             btn.title = 'Add yourself as an attendee';
-//             btn.disabled = false;
-//           }
-//         })();
-//       } else {
-//         console.log('⚠️ [Grid/List] Skipping button - missing eventId or title:', { eventId, eventTitle });
-//       }
-//     },
-
-//     eventClick: function (info) {
-//       if (
-//         pgcalSettings["use_tooltip"] === "true" ||
-//         pgcalSettings["no_link"] === "true"
-//       ) {
-//         info.jsEvent.preventDefault(); // Prevent following link
-//       }
-//     },
-
-//     // Change view on window resize
-//     windowResize: function (view) {
-//       // Catch mobile chrome, which changes window size as nav bar appears
-//       // so only fire if width has changed.
-//       if (
-//         window.innerWidth !== width &&
-//         views.hasList &&
-//         views.wantsToEnforceListviewOnMobile
-//       ) {
-//         if (pgcal_is_mobile()) {
-//           calendar.changeView(views.listType);
-//         } else {
-//           calendar.changeView(selectedView);
-//         }
-//       }
-//     },
-//   };
-
-//   const pgcalOverrides = JSON.parse(pgcalSettings["fc_args"]);
-//   const pgCalArgs = pgcal_argmerge(pgcalDefaults, pgcalOverrides);
-
-//   // console.log(pgcalSettings["fc_args"]); // DEBUG
-//   // console.log(JSON.stringify(pgcalDefaults, null, 2)); // DEBUG
-//   // console.log(JSON.stringify(pgCalArgs, null, 2)); // DEBUG
-
-//   const calendar = new FullCalendar.Calendar(calendarEl, pgCalArgs);
-//   calendar.render();
-
-//   // Store calendar reference for map integration
-//   calendarEl._calendar = calendar;
-// }
 
 /**
  * Main function that initializes and renders the FullCalendar with Google Calendar events and tooltips.
@@ -721,9 +215,11 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
 
             if (result?.data?.isAttendee) {
               btn.textContent = 'Resend Invite';
+              btn.setAttribute('data-resend', 'true'); //-flag as resend for later use
               btn.style.background = '#34a853';
             } else {
               btn.textContent = '+ Invite Me';
+              btn.setAttribute('data-resend', 'false');
             }
 
             btn.disabled = false;
@@ -731,6 +227,7 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
             console.error('Attendee check failed:', err);
             btn.textContent = '+ Invite Me';
             btn.disabled = false;
+            btn.setAttribute('data-resend', 'false');
           }
         })();
 
@@ -1801,7 +1298,7 @@ function pgcal_fetchAndAddEventMarkers(map, pgcalSettings, globalSettings) {
  * - calendarId is extracted from event.url cid= if present; otherwise we send primary and let PHP decode the composite
  * - We optimistically disable the button, call WP AJAX, and re-enable/fallback to URL on failure
  */
-function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null, btn = null) {
+function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null, btn = null, isResend = false) {
   const eventId = event.id;
 
   // If statusEl/btn not provided, try to find them (fallback for old calls)
@@ -1811,7 +1308,7 @@ function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null
   // console.log('[pgcal_addToCalendar] called with event:', { eventId, event });
 
   if (!statusEl || !btn) {
-    console.error('❌ Missing status or button elements for event:', eventId);
+    console.error('[pgcal_addToCalendar] Missing status or button elements for event:', eventId);
     return;
   }
 
@@ -1828,7 +1325,7 @@ function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null
     const cidMatch = event.url.match(/cid=([^&]+)/);
     if (cidMatch && cidMatch[1]) {
       calendarId = decodeURIComponent(cidMatch[1]);
-      console.log('📋 Extracted calendar ID from URL:', calendarId);
+      console.log('[pgcal_addToCalendar] Extracted calendar ID from URL:', calendarId);
     }
   }
   // If still no calendar ID from URL, send the raw event ID (composite) and let PHP decode it
@@ -1836,7 +1333,7 @@ function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null
     console.log('[pgcal_addToCalendar] Using default calendar ID (primary), PHP will extract from composite ID if needed');
   }
 
-  const requestBody = `action=pgcal_add_to_calendar&event_id=${encodeURIComponent(eventId)}&calendar_id=${encodeURIComponent(calendarId)}`;
+  const requestBody = `action=pgcal_add_to_calendar&event_id=${encodeURIComponent(eventId)}&calendar_id=${encodeURIComponent(calendarId)}&resend=${isResend ? '1' : '0'}`;
   // console.log('[pgcal_addToCalendar] Sending AJAX request to:', pgcal_vars.ajaxurl);
   // console.log('[pgcal_addToCalendar] Request body:', requestBody);
 
@@ -1932,6 +1429,7 @@ document.addEventListener('click', function (e) {
   e.preventDefault();
   e.stopPropagation();
 
+  const isResend = btn.getAttribute('data-resend') === 'true'; //Check for new resend flag
   const addToCalMode = btn.getAttribute('data-mode'); //Check mode
   const eventLink = btn.closest('a.fc-event, a[href*="google.com/calendar/event"]');
   const eventUrl = eventLink?.href || btn.getAttribute('data-event-url') || null;
@@ -1957,7 +1455,7 @@ document.addEventListener('click', function (e) {
 
   // ROUTE BASED ON MODE
   if (addToCalMode === 'invite') {
-    handleInviteMode(btn, eventId, eventTitle, location, eventUrl);
+    handleInviteMode(btn, eventId, eventTitle, location, eventUrl, isResend);
   } else if (addToCalMode === 'copy') {
     handleCopyMode(btn, eventTitle, location, eventUrl);
   }
@@ -1968,7 +1466,7 @@ document.addEventListener('click', function (e) {
  * Handle "Invite Me" mode (logged-in users)
  * Uses Google Calendar API to add as attendee
  */
-function handleInviteMode(btn, eventId, eventTitle, location, eventUrl) {
+function handleInviteMode(btn, eventId, eventTitle, location, eventUrl, isResend = false) {
   let statusEl = btn.parentElement?.querySelector('.pgcal-add-status');
 
   if (!statusEl) {
@@ -1995,7 +1493,7 @@ function handleInviteMode(btn, eventId, eventTitle, location, eventUrl) {
   let pgcalSettings = window.pgcal_current_settings || {};
 
   // Call existing API handler
-  pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl, btn);
+  pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl, btn, isResend);
 }
 
 /**

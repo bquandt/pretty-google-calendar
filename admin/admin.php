@@ -166,18 +166,18 @@ class pgcalSettings {
   public function pgcal_pring_main_info() {
     printf(
       '<div style="max-width: 1000px;">
-      
+
       <h3>%s</h3>
       <p><code>[pretty_google_calendar gcal="address@group.calendar.google.com"]</code></p>
-      
+
       <h4>Important Links:</h4>
       <ul>
         <li>%s <a href="https://fullcalendar.io/docs/google-calendar" target="_blank">https://fullcalendar.io/docs/google-calendar</a></li>
         <li>%s <a href="https://wordpress.org/plugins/pretty-google-calendar/#installation" target="_blank">Installation Guide</a></li>
       </ul>
-      
+
       <p><strong>%s</strong></p>
-      
+
       <div style="margin: 20px 0;">
         <h3 style="color: #2271b1; border-bottom: 2px solid #2271b1; padding-bottom: 5px;">%s</h3>
         <table class="widefat striped" style="margin-top: 10px;">
@@ -207,7 +207,7 @@ class pgcalSettings {
           </tbody>
         </table>
       </div>
-      
+
       <div style="margin: 20px 0;">
         <h3 style="color: #d63638; border-bottom: 2px solid #d63638; padding-bottom: 5px;">%s</h3>
         <table class="widefat striped" style="margin-top: 10px;">
@@ -233,7 +233,7 @@ class pgcalSettings {
           </tbody>
         </table>
       </div>
-      
+
       </div>',
       esc_html__("Shortcode Usage:", "pretty-google-calendar"),
       esc_html__("You must have a google calendar API. See:", "pretty-google-calendar"),
@@ -284,6 +284,8 @@ class pgcalSettings {
    * Callback for Google Client ID field
    */
   public function pgcal_client_id_callback() {
+    echo '<p class="description">The Client ID is used to identify your application to Googles OAuth 2.0 server. This enables your calendar to work beyond \'Copy to Calendar\' capabilities and actually add events to a user\'s calendar/ enlists them as \'attendees\' for an event. This allows for live updates of an event.</p>';
+    echo '<p class="description">You can obtain these credentials from the <a href="https://console.developers.google.com/apis/credentials" target="_blank">Google Cloud Console</a>. Make sure to enable the Google Calendar API for your project.</p>';
     printf(
       '<input type="text" id="google_client_id" name="pgcal_settings[google_client_id]" value="%s" />',
       isset($this->options['google_client_id']) ? esc_attr($this->options['google_client_id']) : ''
@@ -294,6 +296,7 @@ class pgcalSettings {
    * Callback for Google Client Secret field
    */
   public function pgcal_client_secret_callback() {
+    echo '<p class="description">The Client Secret is used alongside the Client ID to authenticate your application with Google\'s OAuth 2.0 server. Keep this value secure and do not share it publicly.</p>';
     printf(
       '<input type="password" id="google_client_secret" name="pgcal_settings[google_client_secret]" value="%s" />',
       isset($this->options['google_client_secret']) ? esc_attr($this->options['google_client_secret']) : ''
@@ -304,6 +307,7 @@ class pgcalSettings {
    * Callback for Google Refresh Token field
    */
   public function pgcal_refresh_token_callback() {
+    echo '<p class="description">The Refresh Token is used to obtain new access tokens without requiring user interaction and is cycled during API usage. HOWEVER, be aware that currently it has a expiration of 7 days, so it requires periodic renewal (aka users adding themselves to events). Keep this value secure and do not share it publicly.</p>';
     printf(
       '<input type="password" id="google_refresh_token" name="pgcal_settings[google_refresh_token]" value="%s" />',
       isset($this->options['google_refresh_token']) ? esc_attr($this->options['google_refresh_token']) : ''

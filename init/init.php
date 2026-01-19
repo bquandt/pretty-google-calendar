@@ -144,287 +144,9 @@ function pgcal_get_user_email_handler() {
 add_action('wp_ajax_pgcal_get_user_email', 'pgcal_get_user_email_handler');
 add_action('wp_ajax_nopriv_pgcal_get_user_email', 'pgcal_get_user_email_handler');
 
-/**
- * Register Ajax handler to add attendee to Google Calendar event
- *
- * How the event id/calendar id are derived (Google map mode sends a composite):
- * - Frontend sends event_id as the Google Calendar "eid" value from the URL (base64 of "<eventId> <calendarId>@g")
- * - calendar_id is often "primary" in the request; we decode the composite to extract the real calendar id
- * - The handler base64_decodes event_id, splits on space to get eventId + calendarId, and normalizes @g -> @group.calendar.google.com
- * - If attendee_email is missing, the current logged-in user email is used
- * - Then we: refresh token -> fetch event (to read existing attendees) -> patch attendees -> send updates
- *
- * POST parameters:
- * - action: pgcal_add_to_calendar
- * - event_id: The Google Calendar event ID (can be composite base64 from eid)
- * - calendar_id: The Google Calendar ID (default: primary; will be overridden if composite contains calendar id)
- * - attendee_email: The email to add as attendee (will use current user email by default)
- */
-
-// If BREAKS, uncomment the detailed version below
-// function pgcal_add_to_calendar_handler() {
-//   // Verify nonce for security (optional - customize as needed)
-//   // check_ajax_referer('pgcal_nonce');
-
-//   error_log('🔵 pgcal_add_to_calendar_handler called');
-//   error_log('📋 POST data: ' . json_encode($_POST));
-
-//   // Get parameters from request
-//   $event_id_raw = isset($_POST['event_id']) ? sanitize_text_field($_POST['event_id']) : '';
-//   $calendar_id = isset($_POST['calendar_id']) ? sanitize_text_field($_POST['calendar_id']) : 'primary';
-//   $attendee_email = isset($_POST['attendee_email']) ? sanitize_email($_POST['attendee_email']) : '';
-
-//   error_log("📝 Raw parameters: event_id_raw={$event_id_raw}, calendar_id={$calendar_id}, attendee_email={$attendee_email}");
-
-//   // Validate required parameters
-//   if (empty($event_id_raw)) {
-//     error_log('❌ Error: Event ID is required');
-//     wp_send_json_error(array('message' => 'Event ID is required.')); 
-//   }
-
-//   // Decode the event ID if it looks like a base64-encoded composite ID (from Google Calendar URL)
-//   // Format is base64("{event_id} {calendar_id}@group.calendar.google.com")
-//   $event_id = $event_id_raw;
-//   $decoded = base64_decode($event_id_raw, true);
-  
-//   error_log("🔍 Raw event_id_raw: {$event_id_raw}");
-//   error_log("🔓 Attempting base64_decode...");
-  
-//   if ($decoded !== false) {
-//     error_log("🔓 Decoded result: {$decoded}");
-    
-//     // Check if decoded string contains a space (composite ID format)
-//     if (strpos($decoded, ' ') !== false) {
-//       error_log("✅ Found composite ID format (space-separated)");
-      
-//       // Split by space to get event_id and calendar_id
-//       $parts = explode(' ', $decoded, 2);
-//       $event_id = trim($parts[0]);
-      
-//       if (isset($parts[1])) {
-//         // Extract calendar ID from part after space
-//         $cal_part = trim($parts[1]);
-//         error_log("📋 Calendar part: {$cal_part}");
-        
-//         // The calendar ID is everything in the string
-//         // It may end with @g or @group.calendar.google.com, remove those markers
-//         $extracted_calendar_id = $cal_part;
-        
-//         // Clean up the calendar ID format
-//         if (substr($extracted_calendar_id, -2) === '@g') {
-//           $extracted_calendar_id = substr($extracted_calendar_id, 0, -2);
-//           $extracted_calendar_id .= '@group.calendar.google.com';
-//         } elseif (strpos($extracted_calendar_id, '@group.calendar.google.com') === false && strpos($extracted_calendar_id, '@') !== false) {
-//           // Has @ but not the full domain, add it
-//           $cal_user_id = explode('@', $extracted_calendar_id)[0];
-//           $extracted_calendar_id = $cal_user_id . '@group.calendar.google.com';
-//         }
-        
-//         error_log("🔧 Extracted calendar ID: {$extracted_calendar_id}");
-        
-//         // Only use extracted calendar ID if we're still using the default 'primary'
-//         if ($calendar_id === 'primary' && !empty($extracted_calendar_id)) {
-//           $calendar_id = $extracted_calendar_id;
-//           error_log("✅ Using extracted calendar ID: {$calendar_id}");
-//         }
-//       }
-//     } else {
-//       error_log("ℹ️ Decoded value doesn't contain space, using raw ID as-is");
-//       $event_id = $event_id_raw;
-//     }
-//   } else {
-//     error_log("ℹ️ base64_decode returned false, treating as plain event ID");
-//     $event_id = $event_id_raw;
-//   }
-  
-//   error_log("📝 Final parsed parameters: event_id={$event_id}, calendar_id={$calendar_id}");
-
-//   // If no attendee email provided, use current user email
-//   if (empty($attendee_email)) {
-//     $current_user = wp_get_current_user();
-//     error_log("👤 Current user ID: {$current_user->ID}, Email: {$current_user->user_email}");
-    
-//     if ($current_user->ID === 0) {
-//       error_log('❌ Error: User not logged in');
-//       wp_send_json_error(array('message' => 'User must be logged in or provide attendee email.'));
-//     }
-//     $attendee_email = $current_user->user_email;
-//     error_log("✅ Using current user email: {$attendee_email}");
-//   }
-
-//   // Google Calendar API credentials
-//   $pgcal_settings = get_option('pgcal_settings', array());
-//   $client_id = isset($pgcal_settings['google_client_id']) ? $pgcal_settings['google_client_id'] : '';
-//   $client_secret = isset($pgcal_settings['google_client_secret']) ? $pgcal_settings['google_client_secret'] : '';
-//   $refresh_token = isset($pgcal_settings['google_refresh_token']) ? $pgcal_settings['google_refresh_token'] : '';
-
-//   // Validate credentials exist
-//   if (empty($client_id) || empty($client_secret) || empty($refresh_token)) {
-//     error_log('❌ Error: Google Calendar credentials not configured. Please set them in plugin settings.');
-//     wp_send_json_error(array('message' => 'Google Calendar credentials not configured. Please set them in plugin settings.'));
-//     return;
-//   }
-  
-//   try {
-//     // 1) Exchange refresh token for access token
-//     error_log('🔄 Exchanging refresh token for access token...');
-//     $token_response = wp_remote_post('https://oauth2.googleapis.com/token', array(
-//       'timeout' => 20,
-//       'headers' => array('Content-Type' => 'application/x-www-form-urlencoded'),
-//       'body' => array(
-//         'client_id' => $client_id,
-//         'client_secret' => $client_secret,
-//         'refresh_token' => $refresh_token,
-//         'grant_type' => 'refresh_token',
-//       ),
-//     ));
-
-//     if (is_wp_error($token_response)) {
-//       $error_msg = $token_response->get_error_message();
-//       error_log("❌ Token fetch error: {$error_msg}");
-//       throw new Exception('Failed to fetch access token: ' . $error_msg);
-//     }
-
-//     $token_code = wp_remote_retrieve_response_code($token_response);
-//     $token_body = wp_remote_retrieve_body($token_response);
-//     $token_json = json_decode($token_body, true);
-
-//     error_log("📥 Token response code: {$token_code}");
-//     error_log("📥 Token response body: {$token_body}");
-
-//     if ($token_code !== 200 || empty($token_json['access_token'])) {
-//       error_log("❌ Failed to get access token");
-//       throw new Exception('Failed to retrieve access token (' . $token_code . '): ' . $token_body);
-//     }
-
-//     error_log("✅ Access token obtained successfully");
-//     $access_token = $token_json['access_token'];
-//     $auth_headers = array(
-//       'Authorization' => 'Bearer ' . $access_token,
-//       'Content-Type' => 'application/json',
-//     );
-
-//     //**MARKER: the $get_url below may actually be the incorrect url, instead we should use sum like:
-//     //  curl -X GET   "https://www.googleapis.com/calendar/v3/calendars/$calendar_id/events"  / 
-//     // -H "Authorization: Bearer $access_token"  / 
-//     // -H "Accept: application/json" to check the attendees of an event
-
-//     // 2) Fetch the event to get existing attendees
-//     error_log("🔍 Fetching event: {$event_id} from calendar: {$calendar_id}");
-//     $get_url = 'https://www.googleapis.com/calendar/v3/calendars/' . rawurlencode($calendar_id) . '/events/' . rawurlencode($event_id);
-//     error_log("📍 GET URL: {$get_url}");
-    
-//     $get_response = wp_remote_get($get_url, array('timeout' => 20, 'headers' => $auth_headers));
-
-//     if (is_wp_error($get_response)) {
-//       $error_msg = $get_response->get_error_message();
-//       error_log("❌ Event fetch error: {$error_msg}");
-//       throw new Exception('Failed to fetch event: ' . $error_msg);
-//     }
-
-//     $get_code = wp_remote_retrieve_response_code($get_response);
-//     $get_body = wp_remote_retrieve_body($get_response);
-//     $event_json = json_decode($get_body, true);
-
-//     error_log("📥 Event response code: {$get_code}");
-//     error_log("📥 Event response: " . substr($get_body, 0, 500));
-
-//     if ($get_code !== 200 || empty($event_json['id'])) {
-//       error_log("❌ Failed to retrieve event");
-//       throw new Exception('Failed to retrieve event (' . $get_code . '): ' . $get_body);
-//     }
-
-//     error_log("✅ Event fetched successfully");
-//     $attendees = isset($event_json['attendees']) && is_array($event_json['attendees']) ? $event_json['attendees'] : array();
-//     error_log("👥 Current attendees: " . json_encode($attendees));
-
-//     // Check if user is already an attendee
-//     $is_already_attendee = false;
-//     foreach ($attendees as $att) {
-//       if (isset($att['email']) && strtolower($att['email']) === strtolower($attendee_email)) {
-//         $is_already_attendee = true;
-//         break;
-//       }
-//     }
-
-//     if ($is_already_attendee) {
-//       error_log("ℹ️ User {$attendee_email} is already an attendee");
-//       wp_send_json_success(array(
-//         'message' => 'User is already an attendee of this event.',
-//         'data' => array(
-//           'event_id' => $event_id,
-//           'calendar_id' => $calendar_id,
-//           'attendee_email' => $attendee_email,
-//           'already_attendee' => true
-//         )
-//       ));
-//       return;
-//     }
-
-//     // Append new attendee
-//     error_log("➕ Adding attendee: {$attendee_email}");
-//     $attendees[] = array('email' => $attendee_email);
-
-//     // 3) Patch the event with new attendees and send updates
-//     error_log("📝 Patching event with new attendee...");
-//     $patch_url = 'https://www.googleapis.com/calendar/v3/calendars/' . rawurlencode($calendar_id) . '/events/' . rawurlencode($event_id) . '?sendUpdates=all';
-//     $patch_body = json_encode(array('attendees' => $attendees));
-
-//     error_log("📍 PATCH URL: {$patch_url}");
-//     error_log("📋 PATCH body: {$patch_body}");
-
-//     $patch_response = wp_remote_request($patch_url, array(
-//       'method' => 'PATCH',
-//       'timeout' => 20,
-//       'headers' => $auth_headers,
-//       'body' => $patch_body,
-//     ));
-
-//     if (is_wp_error($patch_response)) {
-//       $error_msg = $patch_response->get_error_message();
-//       error_log("❌ Patch error: {$error_msg}");
-//       throw new Exception('Failed to patch event: ' . $error_msg);
-//     }
-
-//     $patch_code = wp_remote_retrieve_response_code($patch_response);
-//     $patch_body_resp = wp_remote_retrieve_body($patch_response);
-//     $updated_event = json_decode($patch_body_resp, true);
-
-//     error_log("📥 Patch response code: {$patch_code}");
-//     error_log("📥 Patch response: " . substr($patch_body_resp, 0, 500));
-
-//     if ($patch_code < 200 || $patch_code >= 300) {
-//       error_log("❌ Patch failed with code {$patch_code}");
-//       throw new Exception('Patch failed (' . $patch_code . '): ' . $patch_body_resp);
-//     }
-
-//     error_log("🎉 Event patched successfully!");
-//     // Success response
-//     wp_send_json_success(array(
-//       'message' => 'Successfully added to calendar event!',
-//       'data' => array(
-//         'event_id' => $event_id,
-//         'calendar_id' => $calendar_id,
-//         'attendee_email' => $attendee_email,
-//         'event_summary' => isset($updated_event['summary']) ? $updated_event['summary'] : '',
-//         'event_start' => isset($updated_event['start']['dateTime']) ? $updated_event['start']['dateTime'] : (isset($updated_event['start']['date']) ? $updated_event['start']['date'] : '')
-//       )
-//     ));
-
-//   } catch (Exception $e) {
-//     // General error
-//     $error_msg = $e->getMessage();
-//     error_log('❌ Error in pgcal_add_to_calendar_handler: ' . $error_msg);
-    
-//     wp_send_json_error(array(
-//       'message' => 'Error: ' . $error_msg
-//     ));
-//   }
-// }
-
 function pgcal_add_to_calendar_handler() {
-  error_log('🔵 pgcal_add_to_calendar_handler called');
-  error_log('📋 POST data: ' . json_encode($_POST));
+  error_log('pgcal_add_to_calendar_handler called');
+  error_log('POST data: ' . json_encode($_POST));
 
   /* ---------------------------------------------------------
    * 1. Input + basic validation
@@ -432,6 +154,7 @@ function pgcal_add_to_calendar_handler() {
 
   $event_id_raw   = isset($_POST['event_id']) ? sanitize_text_field($_POST['event_id']) : '';
   $calendar_id    = isset($_POST['calendar_id']) ? sanitize_text_field($_POST['calendar_id']) : 'primary';
+  $isResend = isset($_POST['resend']) && $_POST['resend'] === '1';  // New flag to indicate resend attempt
   $attendee_email = isset($_POST['attendee_email']) ? sanitize_email($_POST['attendee_email']) : '';
 
   if (empty($event_id_raw)) {
@@ -457,7 +180,7 @@ function pgcal_add_to_calendar_handler() {
     }
   }
 
-  error_log("📝 Parsed IDs → event_id={$event_id}, calendar_id={$calendar_id}");
+  error_log("Parsed IDs → event_id={$event_id}, calendar_id={$calendar_id}");
 
   /* ---------------------------------------------------------
    * 3. Resolve attendee email
@@ -516,10 +239,10 @@ function pgcal_add_to_calendar_handler() {
     ];
 
         /* ---------------------------------------------------------
-    * 6. ✅ events.get — fetch event directly
+    * 6. events.get — fetch event directly
     * --------------------------------------------------------- */
 
-    error_log("🔍 Fetching event via events.get");
+    error_log("Fetching event via events.get");
 
     $get_url =
       'https://www.googleapis.com/calendar/v3/calendars/' .
@@ -542,28 +265,72 @@ function pgcal_add_to_calendar_handler() {
       throw new Exception('Event not found via events.get');
     }
 
-    error_log("✅ Fetched event {$event_json['id']}");
+    error_log("Fetched event {$event_json['id']}");
 
     /* ---------------------------------------------------------
-     * 7. Attendee check
+     * 7. Handle Attendee Logic (Add or Resend)
      * --------------------------------------------------------- */
 
     $attendees = $event_json['attendees'] ?? [];
+    $is_already_attendee = false;
+
+    // Check if user is already attending
     foreach ($attendees as $a) {
       if (isset($a['email']) && strtolower($a['email']) === strtolower($attendee_email)) {
-        wp_send_json_success([
-          'message' => 'User already attending this event.',
-          'data'    => ['already_attendee' => true],
-        ]);
+        $is_already_attendee = true;
+        break;
       }
     }
 
-    $attendees[] = ['email' => $attendee_email];
+    // If resend mode and user is attendee: remove them first (silent, no notification)
+    if ($isResend && $is_already_attendee) {
+      error_log("Resend mode: Removing attendee for fresh invite");
+      
+      // Filter out the attendee
+      $attendees = array_filter($attendees, function($a) use ($attendee_email) {
+        return !(isset($a['email']) && strtolower($a['email']) === strtolower($attendee_email));
+      });
+      $attendees = array_values($attendees); // Reindex array
+
+      // PATCH with sendUpdates=none (silent removal, no email sent)
+      $patch_url_silent = 'https://www.googleapis.com/calendar/v3/calendars/' .
+        rawurlencode($calendar_id) . '/events/' .
+        rawurlencode($event_id) . '?sendUpdates=none';
+
+      $patch_res_silent = wp_remote_request($patch_url_silent, [
+        'method'  => 'PATCH',
+        'timeout' => 20,
+        'headers' => $headers,
+        'body'    => json_encode(['attendees' => $attendees]),
+      ]);
+
+      if (is_wp_error($patch_res_silent)) {
+        throw new Exception('Failed to remove attendee for resend: ' . $patch_res_silent->get_error_message());
+      }
+
+      error_log("Attendee removed, now re-adding with fresh invite");
+    } elseif (!$isResend && $is_already_attendee) {
+      // Normal add mode: user already attending, return early
+      wp_send_json_success([
+        'message' => 'User already attending this event.',
+        'data'    => ['already_attendee' => true],
+      ]);
+    }
 
     /* ---------------------------------------------------------
-     * 8. PATCH event (sendUpdates=all)
+     * 8. Add/Re-add Attendee with Notification (sendUpdates=all)
      * --------------------------------------------------------- */
 
+    // Ensure attendee not already in list (handles both normal add and resend)
+    $attendees = array_filter($attendees, function($a) use ($attendee_email) {
+      return !(isset($a['email']) && strtolower($a['email']) === strtolower($attendee_email));
+    });
+    $attendees = array_values($attendees);
+
+    // Add the attendee
+    $attendees[] = ['email' => $attendee_email];
+
+    // PATCH with sendUpdates=all (sends notification/fresh invite)
     $patch_url = 'https://www.googleapis.com/calendar/v3/calendars/' .
       rawurlencode($calendar_id) . '/events/' .
       rawurlencode($event_id) . '?sendUpdates=all';
@@ -582,7 +349,7 @@ function pgcal_add_to_calendar_handler() {
     $updated = json_decode(wp_remote_retrieve_body($patch_res), true);
 
     wp_send_json_success([
-      'message' => 'Successfully added to calendar event!',
+      'message' => $isResend ? 'Invite resent successfully!' : 'Successfully added to calendar event!',
       'data'    => [
         'event_id'   => $event_id,
         'calendar_id'=> $calendar_id,
@@ -595,7 +362,7 @@ function pgcal_add_to_calendar_handler() {
     ]);
 
   } catch (Exception $e) {
-    error_log('❌ pgcal_add_to_calendar_handler error: ' . $e->getMessage());
+    error_log('pgcal_add_to_calendar_handler error: ' . $e->getMessage());
     wp_send_json_error(['message' => $e->getMessage()]);
   }
 }
@@ -608,7 +375,7 @@ function pgcal_is_user_attendee(
   string $access_token
 ): bool {
 
-  error_log("🔍 pgcal_is_user_attendee start");
+  error_log("[pgcal_is_user_attendee] start");
 
   /* --------------------------------------------------
    * 1. Decode composite/base64 event ID
@@ -628,7 +395,7 @@ function pgcal_is_user_attendee(
     }
     $extracted_calendar_id = $cal;
 
-    error_log("🔓 Composite decoded → event={$extracted_event_id}, calendar={$extracted_calendar_id}");
+    error_log("[pgcal_is_user_attendee]Composite decoded → event={$extracted_event_id}, calendar={$extracted_calendar_id}");
   }
 
   /* --------------------------------------------------
@@ -654,7 +421,7 @@ function pgcal_is_user_attendee(
     return false;
   }
 
-  error_log("🔄 Calendars to try: " . implode(', ', $calendars_to_try));
+  error_log("[pgcal_is_user_attendee] Calendars to try: " . implode(', ', $calendars_to_try));
 
   /* --------------------------------------------------
    * 3. OAuth headers
@@ -676,7 +443,7 @@ function pgcal_is_user_attendee(
   rawurlencode($calendar_id) .
   '/events';
 
-error_log("📞 events.list URL (minimal): {$list_url}");
+error_log("[pgcal_is_user_attendee] events.list URL (minimal): {$list_url}");
 
 $res = wp_remote_get($list_url, [
   'timeout' => 20,
@@ -744,8 +511,8 @@ $res = wp_remote_get($list_url, [
 
 function pgcal_is_attendee_handler() {
 
-  error_log('🔵 pgcal_is_attendee_handler called');
-  error_log('📋 POST data: ' . json_encode($_POST));
+  error_log('[pgcal_is_attendee_handler] called');
+  error_log('[pgcal_is_attendee_handler] POST data: ' . json_encode($_POST));
 
   $event_id_raw   = sanitize_text_field($_POST['event_id'] ?? '');
   $attendee_email = sanitize_email($_POST['attendee_email'] ?? '');

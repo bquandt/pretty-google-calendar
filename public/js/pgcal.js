@@ -1371,6 +1371,8 @@ function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null
         statusEl.textContent = '✓ Invited! Check your email.';
         statusEl.style.color = '#4caf50';
         btn.style.background = '#4caf50';
+        btn.textContent = 'Resend Invite';
+        btn.setAttribute('data-resend', 'true'); //crucial set resend flag
 
         setTimeout(() => {
           statusEl.style.display = 'none';

@@ -199,13 +199,15 @@ function pgcal_add_to_calendar_handler() {
    * --------------------------------------------------------- */
 
   $opts = get_option('pgcal_settings', []);
+
   $client_id     = $opts['google_client_id']     ?? '';
   $client_secret = $opts['google_client_secret'] ?? '';
-  $refresh_token = $opts['google_refresh_token'] ?? '';
+  $refresh_token = get_option('pgcal_google_refresh_token'); // ✅ FIX
 
   if (!$client_id || !$client_secret || !$refresh_token) {
     wp_send_json_error(['message' => 'Google Calendar credentials not configured.']);
   }
+
 
   try {
 
@@ -529,13 +531,15 @@ function pgcal_is_attendee_handler() {
    * -------------------------------------------------- */
 
   $opts = get_option('pgcal_settings', []);
+
   $client_id     = $opts['google_client_id']     ?? '';
   $client_secret = $opts['google_client_secret'] ?? '';
-  $refresh_token = $opts['google_refresh_token'] ?? '';
+  $refresh_token = get_option('pgcal_google_refresh_token'); // ✅ FIX
 
   if (!$client_id || !$client_secret || !$refresh_token) {
     wp_send_json_error(['message' => 'Google credentials missing']);
   }
+
 
   /* --------------------------------------------------
    * Exchange refresh token → access token

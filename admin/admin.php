@@ -1,5 +1,20 @@
 <?php
 
+error_log('[PGCAL] Plugin file loaded');
+
+/**
+ * Log messages to the WordPress debug log if WP_DEBUG_LOG is enabled
+ *
+ * @param string $msg The message to log
+ * @param array  $context Additional context data to log 
+*/
+function pgcal_log($msg, $context = []) {
+  if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+    error_log('[PGCAL] ' . $msg . (!empty($context) ? ' ' . wp_json_encode($context) : ''));
+  }
+}
+
+
 /** @package  */
 class pgcalSettings {
   /**
@@ -137,28 +152,37 @@ class pgcalSettings {
    * @param array $input Contains all settings fields as array keys
    */
   public function pgcal_sanitize($input) {
-    $sanitized_input = array();
-    if (isset($input['google_api']))
-      // TODO test api?
-      $sanitized_input['google_api'] = $input['google_api'];
+  $existing = get_option('pgcal_settings', []);
 
-    if (isset($input['google_client_id']))
-      $sanitized_input['google_client_id'] = sanitize_text_field($input['google_client_id']);
+  pgcal_log('Sanitize called', [
+    'incoming_keys' => array_keys($input),
+    'existing'      => $existing,
+  ]);
 
-    if (isset($input['google_client_secret']))
-      $sanitized_input['google_client_secret'] = sanitize_text_field($input['google_client_secret']);
+  // Start with existing options so nothing is lost
+  $sanitized_input = $existing;
 
-    if (isset($input['google_refresh_token']))
-      $sanitized_input['google_refresh_token'] = sanitize_text_field($input['google_refresh_token']);
-
-    // if (isset($input['use_tooltip']))
-    //   $sanitized_input['use_tooltip'] = sanitize_text_field($input['use_tooltip']);
-
-    // if (isset($input['no_link']))
-    //   $sanitized_input['no_link'] = sanitize_text_field($input['no_link']);
-
-    return $sanitized_input;
+  if (isset($input['google_api'])) {
+    $sanitized_input['google_api'] = sanitize_text_field($input['google_api']);
   }
+
+  if (isset($input['google_client_id'])) {
+    $sanitized_input['google_client_id'] = sanitize_text_field($input['google_client_id']);
+  }
+
+  if (isset($input['google_client_secret'])) {
+    $sanitized_input['google_client_secret'] = sanitize_text_field($input['google_client_secret']);
+  }
+
+  pgcal_log('Sanitize output', $sanitized_input);
+
+  pgcal_log('Sanitize backtrace', [
+  'trace' => array_map(fn($t) => ($t['function'] ?? '') . ' @ ' . ($t['file'] ?? ''), array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), 0, 8))
+]);
+
+  return $sanitized_input;
+}
+
 
   /**
    * Print the Section text
@@ -306,13 +330,53 @@ class pgcalSettings {
   /**
    * Callback for Google Refresh Token field
    */
-  public function pgcal_refresh_token_callback() {
-    echo '<p class="description">The Refresh Token is used to obtain new access tokens without requiring user interaction and is cycled during API usage. HOWEVER, be aware that currently it has a expiration of 7 days, so it requires periodic renewal (aka users adding themselves to events). Keep this value secure and do not share it publicly.</p>';
-    printf(
-      '<input type="password" id="google_refresh_token" name="pgcal_settings[google_refresh_token]" value="%s" />',
-      isset($this->options['google_refresh_token']) ? esc_attr($this->options['google_refresh_token']) : ''
-    );
+public function pgcal_refresh_token_callback() {
+  $refresh_token = get_option('pgcal_google_refresh_token');
+  $meta          = get_option('pgcal_google_token_meta', []);
+
+  $connected = !empty($refresh_token);
+
+  echo '<p class="description">';
+  echo 'Google OAuth connection status: ';
+  echo $connected
+    ? '<strong style="color: green;">Connected</strong>'
+    : '<strong style="color: red;">Not connected</strong>';
+  echo '</p>';
+
+  echo '<p>';
+  echo '<a href="' . esc_url(
+    admin_url('admin-post.php?action=pgcal_google_auth')
+  ) . '" class="button button-primary">';
+  echo $connected ? 'Reconnect Google Calendar' : 'Connect Google Calendar';
+  echo '</a>';
+  echo '</p>';
+
+  if (!$connected) {
+    return;
   }
+
+  echo '<hr style="max-width:600px;margin:12px 0;">';
+  echo '<h4>OAuth Debug Info</h4>';
+
+  if (!empty($meta['access_token_expires_at'])) {
+    $expires_in = $meta['access_token_expires_at'] - time();
+
+    echo '<p><strong>Access token expires:</strong> ';
+    echo esc_html(date('Y-m-d H:i:s', $meta['access_token_expires_at']));
+    echo '</p>';
+
+    echo '<p><strong>Status:</strong> ';
+    echo $expires_in > 0
+      ? '<span style="color:green;">Valid (' . intval($expires_in / 60) . ' min left)</span>'
+      : '<span style="color:red;">Expired</span>';
+    echo '</p>';
+  } else {
+    echo '<p><em>No access-token metadata stored yet.</em></p>';
+  }
+
+  echo '<p><strong>Refresh token:</strong> Stored securely ✔️</p>';
+}
+
 
   // public function pgcal_tooltip_callback() {
   //   printf(
@@ -329,4 +393,137 @@ class pgcalSettings {
   //     isset($this->options['no_link']) ? 'checked' : ''
   //   );
   // }
+}
+
+// Google OAuth admin-post handlers
+add_action('admin_post_pgcal_google_auth', 'pgcal_start_google_oauth');
+add_action('admin_post_pgcal_google_callback', 'pgcal_google_oauth_callback');
+
+function pgcal_start_google_oauth() {
+
+  
+
+  if (!current_user_can('manage_options')) {
+    wp_die('Unauthorized');
+  }
+
+  $opts = get_option('pgcal_settings');
+
+  pgcal_log('Starting Google OAuth', [
+  'client_id_set' => !empty($opts['google_client_id']),
+  'redirect_uri'  => admin_url('admin-post.php?action=pgcal_google_callback'),
+]);
+
+  if (empty($opts['google_client_id']) || empty($opts['google_client_secret'])) {
+    wp_die('Google Client ID / Secret not configured');
+  }
+
+  $params = [
+    'client_id'     => $opts['google_client_id'],
+    'redirect_uri'  => admin_url('admin-post.php?action=pgcal_google_callback'),
+    'response_type' => 'code',
+    'access_type'   => 'offline',
+    'prompt'        => 'consent',
+    'scope'         => implode(' ', [
+    "https://www.googleapis.com/auth/calendar.readonly",
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/calendar.events.readonly",
+    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/calendar.app.created",
+    "https://www.googleapis.com/auth/calendar.events.freebusy",
+    "https://www.googleapis.com/auth/calendar.events.owned",
+    "https://www.googleapis.com/auth/calendar.events.owned.readonly",
+    "https://www.googleapis.com/auth/calendar.events.public.readonly",
+    "https://www.googleapis.com/auth/calendar.app.created",
+    ]),
+  ];
+
+  wp_redirect(
+    'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query($params)
+  );
+  exit;
+}
+
+function pgcal_google_oauth_callback() {
+  pgcal_log('OAuth callback hit', [
+  'has_code' => !empty($_GET['code']),
+  'query'    => $_GET,
+]);
+
+  if (!current_user_can('manage_options')) {
+    wp_die('Unauthorized');
+  }
+
+  if (empty($_GET['code'])) {
+    wp_die('Missing OAuth code');
+  }
+
+  $opts = get_option('pgcal_settings');
+
+  $response = wp_remote_post('https://oauth2.googleapis.com/token', [
+    'body' => [
+      'code'          => sanitize_text_field($_GET['code']),
+      'client_id'     => $opts['google_client_id'],
+      'client_secret' => $opts['google_client_secret'],
+      'redirect_uri'  => admin_url('admin-post.php?action=pgcal_google_callback'),
+      'grant_type'    => 'authorization_code',
+    ],
+  ]);
+
+  pgcal_log('Token endpoint response', [
+  'http_error' => is_wp_error($response) ? $response->get_error_message() : null,
+  'status'     => wp_remote_retrieve_response_code($response),
+  'body'       => wp_remote_retrieve_body($response),
+]);
+
+
+  $tokens = json_decode(wp_remote_retrieve_body($response), true);
+
+  if (empty($tokens['refresh_token'])) {
+    wp_die('No refresh token returned. Try reconnecting.');
+  }
+
+  if (!empty($tokens['access_token']) && !empty($tokens['expires_in'])) {
+  update_option(
+    'pgcal_google_token_meta',
+    [
+      'access_token_expires_at' => time() + (int) $tokens['expires_in'],
+      'last_refresh'            => time(),
+    ],
+    false
+  );
+}
+
+
+  pgcal_log('Saving refresh token', [
+  'has_refresh_token' => !empty($tokens['refresh_token']),
+  'token_preview'     => substr($tokens['refresh_token'], 0, 6) . '***',
+]);
+
+pgcal_log('About to store refresh token separately - outside of pgcal_settings option');
+
+update_option(
+  'pgcal_google_refresh_token',
+  $tokens['refresh_token'],
+  false
+);
+
+pgcal_log('Refresh token stored in separate option', [
+  'has_refresh_token' => !empty($tokens['refresh_token']),
+]);
+
+  $after = get_option('pgcal_settings', []);
+pgcal_log('After update_option get_option', [
+  'after_keys' => array_keys($after),
+  'has_refresh_token' => !empty($after['google_refresh_token']),
+]);
+
+
+  pgcal_log('Option after save', get_option('pgcal_settings'));
+
+
+  wp_redirect(
+    admin_url('options-general.php?page=pgcal-setting-admin&connected=1')
+  );
+  exit;
 }

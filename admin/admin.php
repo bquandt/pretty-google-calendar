@@ -70,6 +70,7 @@
         <?php
         // This prints out all hidden setting fields
         settings_fields('pgcal_option_group');
+        settings_errors('pgcal_settings');
         do_settings_sections('pgcal-setting-admin');
         submit_button();
         ?>
@@ -192,6 +193,7 @@
       $sanitized_input['enable_oauth'] = 'no';
     }
 
+
     if (isset($input['google_client_id'])) {
       $sanitized_input['google_client_id'] = sanitize_text_field($input['google_client_id']);
     }
@@ -199,6 +201,46 @@
     if (isset($input['google_client_secret'])) {
       $sanitized_input['google_client_secret'] = sanitize_text_field($input['google_client_secret']);
     }
+
+    if (($sanitized_input['enable_oauth'] ?? 'no') === 'yes') {
+      $client_id = $sanitized_input['google_client_id'] ?? '';
+      $client_secret = $sanitized_input['google_client_secret'] ?? '';
+      $refresh_token = get_option('pgcal_google_refresh_token');
+
+      $validation = pgcal_validate_oauth_credentials($client_id, $client_secret, $refresh_token);
+
+      if (!$validation['valid'] && $validation['stage'] === 'client') {
+        add_settings_error(
+          'pgcal_settings',
+          'pgcal_oauth_client_invalid',
+          'OAuth client validation failed: ' . $validation['message'],
+          'error'
+        );
+
+        return $existing;
+      }
+
+      update_option(
+        'pgcal_oauth_valid_status',
+        [
+          'valid' => $validation['valid'],
+          'stage' => $validation['stage'],
+          'message' => $validation['message'],
+          'checked_at' => time(),
+        ],
+        false
+      );
+
+      if (!$validation['valid']) {
+        add_settings_error(
+          'pgcal_settings',
+          'pgcal_oauth_token_invalid',
+          'OAuth token validation failed: ' . $validation['message'],
+          'error'
+        );
+      }
+    }
+
 
     pgcal_log('Sanitize output', $sanitized_input);
 
@@ -534,6 +576,122 @@
   return isset($opts['enable_oauth']) && $opts['enable_oauth'] === 'yes';
 }
 
+  function pgcal_oauth_valid() {
+    if (!pgcal_oauth_enabled()) {
+      return false;
+    }
+
+    $opts = get_option('pgcal_settings', []);
+    $client_id = $opts['google_client_id'] ?? '';
+    $client_secret = $opts['google_client_secret'] ?? '';
+    $refresh_token = get_option('pgcal_google_refresh_token');
+
+    if (empty($client_id) || empty($client_secret) || empty($refresh_token)) {
+      return false;
+    }
+
+    $status = get_option('pgcal_oauth_valid_status', []);
+    if (is_array($status) && array_key_exists('valid', $status)) {
+      return (bool) $status['valid'];
+    }
+
+    return true;
+  }
+
+  function pgcal_validate_oauth_credentials($client_id, $client_secret, $refresh_token) {
+    if (empty($client_id) || empty($client_secret)) {
+      return [
+        'valid' => false,
+        'stage' => 'client',
+        'message' => 'Client ID or Client Secret is missing.',
+      ];
+    }
+
+    if (empty($refresh_token)) {
+      return [
+        'valid' => false,
+        'stage' => 'token',
+        'message' => 'No refresh token found. Connect Google Calendar first.',
+      ];
+    }
+
+    $response = wp_remote_post('https://oauth2.googleapis.com/token', [
+      'body' => [
+        'client_id' => $client_id,
+        'client_secret' => $client_secret,
+        'refresh_token' => $refresh_token,
+        'grant_type' => 'refresh_token',
+      ],
+    ]);
+
+    if (is_wp_error($response)) {
+      return [
+        'valid' => false,
+        'stage' => 'token',
+        'message' => 'HTTP Error: ' . $response->get_error_message(),
+      ];
+    }
+
+    $status_code = wp_remote_retrieve_response_code($response);
+    $body = json_decode(wp_remote_retrieve_body($response), true);
+
+    if ($status_code !== 200) {
+      $error_msg = isset($body['error']) ? $body['error'] : 'Unknown error';
+      $error_desc = isset($body['error_description']) ? $body['error_description'] : '';
+      $stage = $error_msg === 'invalid_client' ? 'client' : 'token';
+
+      return [
+        'valid' => false,
+        'stage' => $stage,
+        'message' => trim($error_msg . (empty($error_desc) ? '' : ' - ' . $error_desc)),
+      ];
+    }
+
+    if (empty($body['access_token'])) {
+      return [
+        'valid' => false,
+        'stage' => 'token',
+        'message' => 'No access token returned from Google.',
+      ];
+    }
+
+    $access_token = $body['access_token'];
+    $test_api_response = wp_remote_get('https://www.googleapis.com/calendar/v3/users/me/calendarList', [
+      'headers' => [
+        'Authorization' => 'Bearer ' . $access_token,
+      ],
+    ]);
+
+    if (is_wp_error($test_api_response)) {
+      return [
+        'valid' => false,
+        'stage' => 'token',
+        'message' => 'API test failed: ' . $test_api_response->get_error_message(),
+      ];
+    }
+
+    $api_status = wp_remote_retrieve_response_code($test_api_response);
+    $api_body = json_decode(wp_remote_retrieve_body($test_api_response), true);
+
+    if ($api_status !== 200) {
+      $error_msg = isset($api_body['error']['message']) ? $api_body['error']['message'] : 'API call failed';
+      return [
+        'valid' => false,
+        'stage' => 'token',
+        'message' => 'Calendar API test failed: ' . $error_msg,
+      ];
+    }
+
+    $calendar_count = isset($api_body['items']) ? count($api_body['items']) : 0;
+
+    return [
+      'valid' => true,
+      'stage' => 'token',
+      'message' => 'Token is valid. Verified access to ' . $calendar_count . ' calendar(s).',
+      'calendar_count' => $calendar_count,
+    ];
+  }
+
 
   function pgcal_start_google_oauth() {
     if (!pgcal_oauth_enabled()) {
@@ -648,6 +806,17 @@
     false
   );
 
+  update_option(
+    'pgcal_oauth_valid_status',
+    [
+      'valid' => true,
+      'stage' => 'token',
+      'message' => 'OAuth connection successful.',
+      'checked_at' => time(),
+    ],
+    false
+  );
+
   pgcal_log('Refresh token stored in separate option', [
     'has_refresh_token' => !empty($tokens['refresh_token']),
   ]);
@@ -700,83 +869,33 @@
       exit;
     }
 
-    // Attempt to refresh the access token
-    $response = wp_remote_post('https://oauth2.googleapis.com/token', [
-      'body' => [
-        'client_id'     => $opts['google_client_id'],
-        'client_secret' => $opts['google_client_secret'],
-        'refresh_token' => $refresh_token,
-        'grant_type'    => 'refresh_token',
+    $result = pgcal_validate_oauth_credentials(
+      $opts['google_client_id'],
+      $opts['google_client_secret'],
+      $refresh_token
+    );
+
+    update_option(
+      'pgcal_oauth_valid_status',
+      [
+        'valid' => $result['valid'],
+        'stage' => $result['stage'],
+        'message' => $result['message'],
+        'checked_at' => time(),
       ],
-    ]);
+      false
+    );
 
-    pgcal_log('Token refresh test response', [
-      'http_error' => is_wp_error($response) ? $response->get_error_message() : null,
-      'status'     => wp_remote_retrieve_response_code($response),
-    ]);
-
-    if (is_wp_error($response)) {
+    if (!$result['valid']) {
       wp_redirect(
-        admin_url('options-general.php?page=pgcal-setting-admin&token_test=error&test_message=' . urlencode('HTTP Error: ' . $response->get_error_message()))
+        admin_url('options-general.php?page=pgcal-setting-admin&token_test=error&test_message=' . urlencode($result['message']))
       );
       exit;
     }
 
-    $status_code = wp_remote_retrieve_response_code($response);
-    $body = json_decode(wp_remote_retrieve_body($response), true);
+    $calendar_count = isset($result['calendar_count']) ? $result['calendar_count'] : 0;
+    $success_message = 'Token is valid! Successfully verified access to ' . $calendar_count . ' calendar(s).';
 
-    if ($status_code !== 200) {
-      $error_msg = isset($body['error']) ? $body['error'] : 'Unknown error';
-      $error_desc = isset($body['error_description']) ? $body['error_description'] : '';
-      
-      wp_redirect(
-        admin_url('options-general.php?page=pgcal-setting-admin&token_test=error&test_message=' . urlencode('Token refresh failed: ' . $error_msg . ' - ' . $error_desc))
-      );
-      exit;
-    }
-
-    if (empty($body['access_token'])) {
-      wp_redirect(
-        admin_url('options-general.php?page=pgcal-setting-admin&token_test=error&test_message=' . urlencode('No access token returned from Google.'))
-      );
-      exit;
-    }
-
-    // Test the access token by making a simple API call
-    $access_token = $body['access_token'];
-    $test_api_response = wp_remote_get('https://www.googleapis.com/calendar/v3/users/me/calendarList', [
-      'headers' => [
-        'Authorization' => 'Bearer ' . $access_token,
-      ],
-    ]);
-
-    pgcal_log('Calendar API test', [
-      'status' => wp_remote_retrieve_response_code($test_api_response),
-    ]);
-
-    if (is_wp_error($test_api_response)) {
-      wp_redirect(
-        admin_url('options-general.php?page=pgcal-setting-admin&token_test=error&test_message=' . urlencode('API test failed: ' . $test_api_response->get_error_message()))
-      );
-      exit;
-    }
-
-    $api_status = wp_remote_retrieve_response_code($test_api_response);
-    $api_body = json_decode(wp_remote_retrieve_body($test_api_response), true);
-
-    if ($api_status !== 200) {
-      $error_msg = isset($api_body['error']['message']) ? $api_body['error']['message'] : 'API call failed';
-      wp_redirect(
-        admin_url('options-general.php?page=pgcal-setting-admin&token_test=error&test_message=' . urlencode('Calendar API test failed: ' . $error_msg))
-      );
-      exit;
-    }
-
-    // Success!
-    $calendar_count = isset($api_body['items']) ? count($api_body['items']) : 0;
-    $success_message = 'Token is valid! Successfully retrieved access token and verified access to ' . $calendar_count . ' calendar(s).';
-    
-    // Update last refresh timestamp
     $meta = get_option('pgcal_google_token_meta', []);
     $meta['last_test'] = time();
     update_option('pgcal_google_token_meta', $meta, false);

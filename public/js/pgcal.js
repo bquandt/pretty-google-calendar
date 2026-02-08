@@ -71,11 +71,11 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
   //NEW- Fetch logged in user email once globally
   const userEmail = await pgcalGetCurrentUserEmail(ajaxurl);
   const isLoggedIn = !!(userEmail && userEmail.trim());
-  const oauthEnabled = !!globalSettings["oauth_enabled"];
+  const oauthValid = !!globalSettings["oauth_valid"];
   //NEW- Store globally for event handlers
   window.pgcaluser_email = userEmail;
   window.pgcal_is_logged_in = isLoggedIn;
-  window.pgcal_oauth_enabled = oauthEnabled;
+  window.pgcal_oauth_valid = oauthValid;
 
   if (pgcalSettings["show_map"] === "true") {
     pgcal_render_map(pgcalSettings, globalSettings);
@@ -160,7 +160,7 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
 
       const event = info.event;
       const isLoggedIn = window.pgcal_is_logged_in; //  Use global flag
-      const canInvite = isLoggedIn && window.pgcal_oauth_enabled;
+      const canInvite = isLoggedIn && window.pgcal_oauth_valid;
 
       // Extract event ID
       let eventId = '';

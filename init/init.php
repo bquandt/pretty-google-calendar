@@ -91,6 +91,7 @@ function pgcal_ajax_handler() {
   $default = array();
   $globalSettings = get_option('pgcal_settings', $default);
   $globalSettings['oauth_enabled'] = pgcal_oauth_enabled();
+  $globalSettings['oauth_valid'] = pgcal_oauth_valid();
 
   // Send the data as a JSON response.
   wp_send_json($globalSettings);

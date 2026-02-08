@@ -532,7 +532,7 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
 
           // Check login status to determine button mode
           const isLoggedIn = window.pgcal_is_logged_in;
-          const canInvite = isLoggedIn && window.pgcal_oauth_enabled;
+          const canInvite = isLoggedIn && window.pgcal_oauth_valid;
 
           // Generate button HTML based on login + OAuth status
           let buttonHTML = '';

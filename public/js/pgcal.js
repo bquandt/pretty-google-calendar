@@ -71,9 +71,11 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
   //NEW- Fetch logged in user email once globally
   const userEmail = await pgcalGetCurrentUserEmail(ajaxurl);
   const isLoggedIn = !!(userEmail && userEmail.trim());
+  const oauthEnabled = !!globalSettings["oauth_enabled"];
   //NEW- Store globally for event handlers
   window.pgcaluser_email = userEmail;
   window.pgcal_is_logged_in = isLoggedIn;
+  window.pgcal_oauth_enabled = oauthEnabled;
 
   if (pgcalSettings["show_map"] === "true") {
     pgcal_render_map(pgcalSettings, globalSettings);
@@ -158,6 +160,7 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
 
       const event = info.event;
       const isLoggedIn = window.pgcal_is_logged_in; //  Use global flag
+      const canInvite = isLoggedIn && window.pgcal_oauth_enabled;
 
       // Extract event ID
       let eventId = '';
@@ -181,8 +184,8 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
       btn.className = 'pgcal-add-btn';
       btn.style.cssText = 'padding:4px 10px;background:#4285f4;color:#fff;border:none;border-radius:3px;font-size:12px;cursor:pointer;';
 
-      // BRANCHING LOGIC BASED ON LOGIN STATUS
-      if (isLoggedIn) {
+      // BRANCHING LOGIC BASED ON LOGIN + OAUTH STATUS
+      if (canInvite) {
         // LOGGED IN: Same Show "Invite Me" workflow
         btn.textContent = 'Checking…';
         btn.disabled = true;
@@ -529,10 +532,11 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
 
           // Check login status to determine button mode
           const isLoggedIn = window.pgcal_is_logged_in;
+          const canInvite = isLoggedIn && window.pgcal_oauth_enabled;
 
-          // Generate button HTML based on login status
+          // Generate button HTML based on login + OAuth status
           let buttonHTML = '';
-          if (isLoggedIn) {
+          if (canInvite) {
             // LOGGED IN: Show invite button with async attendee checking
             buttonHTML = `<button class="pgcal-add-btn" data-event-id="${eventId}" data-event-url="${event.url || ''}" data-location="${location}" data-event-title="${event.title}" data-calendar-id="${event.source?.id || event.source?.googleCalendarId || ''}" data-mode="invite" data-resend="false" style="display: inline-block; padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background 0.3s;" disabled>Checking...</button>`;
           } else {
@@ -584,8 +588,8 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
             const popupBtn = document.querySelector(`#popup-${eventId} .pgcal-add-btn`);
             if (!popupBtn) return;
 
-            // Skip attendee checking if user is not logged in
-            if (!isLoggedIn) {
+            // Skip attendee checking if user is not logged in or OAuth is disabled
+            if (!canInvite) {
               popupBtn.disabled = false;
               return;
             }
@@ -631,7 +635,7 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
           if (pgcalSettings["popups_open"] === "true") {
             infoWindow.open(map, marker);
             // Check attendee status when popup opens (only if logged in)
-            if (isLoggedIn) {
+            if (canInvite) {
               setTimeout(updateMapPopupButton, 100);
             }
           }
@@ -643,7 +647,7 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
             } else {
               infoWindow.open(map, marker);
               // Check attendee status when popup opens (only if logged in)
-              if (isLoggedIn) {
+              if (canInvite) {
                 setTimeout(updateMapPopupButton, 100);
               }
             }

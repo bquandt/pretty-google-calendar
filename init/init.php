@@ -90,6 +90,7 @@ if (is_admin())
 function pgcal_ajax_handler() {
   $default = array();
   $globalSettings = get_option('pgcal_settings', $default);
+  $globalSettings['oauth_enabled'] = pgcal_oauth_enabled();
 
   // Send the data as a JSON response.
   wp_send_json($globalSettings);
@@ -145,6 +146,17 @@ add_action('wp_ajax_pgcal_get_user_email', 'pgcal_get_user_email_handler');
 add_action('wp_ajax_nopriv_pgcal_get_user_email', 'pgcal_get_user_email_handler');
 
 function pgcal_add_to_calendar_handler() {
+
+if (!pgcal_oauth_enabled()) {
+    error_log('pgcal_add_to_calendar_handler blocked: OAuth disabled');
+
+    wp_send_json_error([
+      'message' => 'Google OAuth is disabled.'
+    ], 403);
+  }
+
+  error_log('pgcal_add_to_calendar_handler called');
+  error_log('POST data: ' . json_encode($_POST));
   error_log('pgcal_add_to_calendar_handler called');
   error_log('POST data: ' . json_encode($_POST));
 
@@ -512,6 +524,13 @@ $res = wp_remote_get($list_url, [
 
 
 function pgcal_is_attendee_handler() {
+   if (!pgcal_oauth_enabled()) {
+    wp_send_json_error([
+      'message' => 'Google OAuth is disabled.'
+    ], 403);
+  }
+
+  error_log('[pgcal_is_attendee_handler] called');
 
   error_log('[pgcal_is_attendee_handler] called');
   error_log('[pgcal_is_attendee_handler] POST data: ' . json_encode($_POST));

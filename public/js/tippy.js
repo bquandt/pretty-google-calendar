@@ -29,8 +29,61 @@ function pgcal_tippyRender(info, currCal) {
     pgcal_urlify(info.event.extendedProps.description)
   );
 
-  // Removed from the tooltip for now since add to calendar button and the fallback url creation is now added/handled in pgcal.js
-  // toolContent += `<div class="toolloc">${pgcal_addToGoogle(info.event.url)}</div>`;
+  const currentTime = new Date();
+  const eventEndTime = info.event.end || info.event.start;
+  const isPastEvent = eventEndTime && eventEndTime < currentTime;
+
+  const isLoggedIn = window.pgcal_is_logged_in;
+  const canInvite = isLoggedIn && window.pgcal_oauth_valid;
+
+  let eventId = "";
+  if (info.event.url && info.event.url.includes("eid=")) {
+    eventId = info.event.url.split("eid=")[1]?.split("&")[0] || "";
+  }
+  if (!eventId) {
+    eventId = info.event.id || "";
+  }
+
+  const eventTitle = info.event.title || "";
+  const location = info.event.extendedProps.location || "";
+  const eventUrl = info.event.url || "";
+  const startIso = info.event.start ? info.event.start.toISOString() : "";
+  const endIso = info.event.end ? info.event.end.toISOString() : startIso;
+
+  let buttonHtml = "";
+  if (!isPastEvent && eventId && eventTitle) {
+    if (canInvite) {
+      buttonHtml = `
+        <div style="margin-top:4px;display:flex;align-items:center;gap:8px;">
+          <button class="pgcal-add-btn"
+            data-mode="invite"
+            data-resend="false"
+            data-event-id="${eventId}"
+            data-event-title="${eventTitle}"
+            data-location="${location}"
+            data-event-url="${eventUrl}"
+            style="padding:4px 10px;background:#4285f4;color:#fff;border:none;border-radius:3px;font-size:12px;cursor:pointer;"
+            disabled>Checking...</button>
+          <span class="pgcal-add-status" style="display:none;font-size:12px;"></span>
+        </div>`;
+    } else {
+      buttonHtml = `
+        <div style="margin-top:4px;display:flex;align-items:center;gap:8px;">
+          <button class="pgcal-add-btn"
+            data-mode="copy"
+            data-event-id="${eventId}"
+            data-event-title="${eventTitle}"
+            data-location="${location}"
+            data-event-url="${eventUrl}"
+            data-start="${startIso}"
+            data-end="${endIso}"
+            style="padding:4px 10px;background:#ff9800;color:#fff;border:none;border-radius:3px;font-size:12px;cursor:pointer;">Copy to Calendar</button>
+          <span class="pgcal-add-status" style="display:none;font-size:12px;"></span>
+        </div>`;
+    }
+  }
+
+  toolContent += buttonHtml;
 
   tippy(info.el, {
     trigger: "click",
@@ -56,5 +109,54 @@ function pgcal_tippyRender(info, currCal) {
     appendTo: document.getElementById(currCal),
     maxWidth: 600, // TODO: from settings
     boundary: "window",
+    onShow(instance) {
+      if (!canInvite || isPastEvent || !eventId) {
+        return;
+      }
+
+      const ajaxurl = window.pgcal_ajaxurl || (window.pgcal_vars && window.pgcal_vars.ajaxurl);
+      if (!ajaxurl) {
+        return;
+      }
+
+      const button = instance.popper.querySelector(
+        '.pgcal-add-btn[data-mode="invite"]'
+      );
+      if (!button) {
+        return;
+      }
+
+      const userEmail = window.pgcaluser_email || "";
+      const calendarId = info.event.source?.id || "";
+
+      fetch(ajaxurl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          action: "pgcal_is_attendee",
+          event_id: eventId,
+          attendee_email: userEmail,
+          calendar_id: calendarId,
+        }),
+      })
+        .then((response) => response.json())
+        .then((result) => {
+          if (result?.data?.isAttendee) {
+            button.textContent = "Resend Invite";
+            button.setAttribute("data-resend", "true");
+            button.style.background = "#34a853";
+          } else {
+            button.textContent = "+ Invite Me";
+            button.setAttribute("data-resend", "false");
+          }
+          button.disabled = false;
+        })
+        .catch((error) => {
+          console.error("Attendee check failed:", error);
+          button.textContent = "+ Invite Me";
+          button.setAttribute("data-resend", "false");
+          button.disabled = false;
+        });
+    },
   });
 }

@@ -1,3 +1,38 @@
+function pgcal_showMobileModal(contentHtml) {
+  const existing = document.querySelector('.pgcal-modal-overlay');
+  if (existing) {
+    existing.remove();
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'pgcal-modal-overlay';
+
+  const modal = document.createElement('div');
+  modal.className = 'pgcal-modal';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'pgcal-modal-close';
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', 'Close');
+  closeBtn.textContent = 'Close';
+
+  const content = document.createElement('div');
+  content.className = 'pgcal-modal-content';
+  content.innerHTML = contentHtml;
+
+  closeBtn.addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) {
+      overlay.remove();
+    }
+  });
+
+  modal.appendChild(closeBtn);
+  modal.appendChild(content);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
 function pgcal_tippyRender(info, currCal) {
   // console.log(info.event); // DEBUG
 
@@ -85,30 +120,117 @@ function pgcal_tippyRender(info, currCal) {
 
   toolContent += buttonHtml;
 
+  const isMobile = pgcal_is_mobile();
+
+  if (isMobile) {
+    if (info.el.dataset.pgcalMobileModal === '1') {
+      return;
+    }
+
+    info.el.dataset.pgcalMobileModal = '1';
+    info.el.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      pgcal_showMobileModal(toolContent);
+
+      if (!canInvite || isPastEvent || !eventId) {
+        return;
+      }
+
+      const ajaxurl = window.pgcal_ajaxurl || (window.pgcal_vars && window.pgcal_vars.ajaxurl);
+      if (!ajaxurl) {
+        return;
+      }
+
+      const button = document.querySelector(
+        '.pgcal-modal .pgcal-add-btn[data-mode="invite"]'
+      );
+      if (!button) {
+        return;
+      }
+
+      const userEmail = window.pgcaluser_email || "";
+      const calendarId = info.event.source?.id || "";
+
+      fetch(ajaxurl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          action: "pgcal_is_attendee",
+          event_id: eventId,
+          attendee_email: userEmail,
+          calendar_id: calendarId,
+        }),
+      })
+        .then((response) => response.json())
+        .then((result) => {
+          if (result?.data?.isAttendee) {
+            button.textContent = "Resend Invite";
+            button.setAttribute("data-resend", "true");
+            button.style.background = "#34a853";
+          } else {
+            button.textContent = "+ Invite Me";
+            button.setAttribute("data-resend", "false");
+          }
+          button.disabled = false;
+        })
+        .catch((error) => {
+          console.error("Attendee check failed:", error);
+          button.textContent = "+ Invite Me";
+          button.setAttribute("data-resend", "false");
+          button.disabled = false;
+        });
+    });
+    return;
+  }
+
   tippy(info.el, {
     trigger: "click",
     content: toolContent,
     theme: "light", // TODO: from settings
     allowHTML: true,
-    placement: pgcal_is_mobile() ? "bottom" : "auto",
-    popperOptions: pgcal_is_mobile()
+    placement: isMobile ? "auto" : "auto",
+    popperOptions: isMobile
       ? {
+          strategy: "fixed",
           modifiers: [
             {
-              name: "flip",
-              enabled: false,
+              name: "autoPlacement",
               options: {
-                // flipBehavior: ['bottom', 'right', 'top']
-                // fallbackPlacements: ['right', 'top'],
+                alignment: "end",
+                padding: 8,
+              },
+            },
+            {
+              name: "flip",
+              options: {
+                fallbackPlacements: ["top", "bottom", "right", "left"],
+              },
+            },
+            {
+              name: "shift",
+              options: {
+                mainAxis: true,
+                crossAxis: true,
+                padding: 8,
+              },
+            },
+            {
+              name: "preventOverflow",
+              options: {
+                boundary: "viewport",
+                padding: 8,
+                altAxis: true,
+                tether: true,
               },
             },
           ],
         }
       : "",
     interactive: "true", // Allows clicking inside
-    appendTo: document.getElementById(currCal),
-    maxWidth: 600, // TODO: from settings
-    boundary: "window",
+    appendTo: isMobile ? document.body : document.getElementById(currCal),
+    maxWidth: isMobile ? "calc(100vw - 24px)" : 600, // TODO: from settings
+    boundary: isMobile ? "viewport" : "window",
     onShow(instance) {
       if (!canInvite || isPastEvent || !eventId) {
         return;

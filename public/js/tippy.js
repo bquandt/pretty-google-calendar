@@ -122,7 +122,7 @@ function pgcal_tippyRender(info, currCal) {
 
   const isMobile = pgcal_is_mobile();
 
-  if (isMobile) {
+  // if (isMobile) {
     if (info.el.dataset.pgcalMobileModal === '1') {
       return;
     }
@@ -182,7 +182,7 @@ function pgcal_tippyRender(info, currCal) {
         });
     });
     return;
-  }
+  // }   //commented out teh outer if block to enable tippy on mobile as well, since the mobile modal is now triggered by a click event listener instead of tippy's onShow
 
   tippy(info.el, {
     trigger: "click",

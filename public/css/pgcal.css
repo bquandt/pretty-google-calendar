@@ -150,6 +150,7 @@
   overflow: hidden !important;
   box-sizing: border-box !important;
   position: relative !important;
+  container-type: inline-size;
 }
 
 /* Ensure FullCalendar respects container boundaries */
@@ -590,12 +591,15 @@ body .tippy-box {
   border-radius: 4px !important;
   font-size: 12px !important;
   font-weight: 600 !important;
-  line-height: 1.2 !important;
+  line-height: 1.25 !important;
   letter-spacing: 0.2px !important;
   color: #fff !important;
   background: var(--pgcal-primary-color) !important;
   cursor: pointer !important;
   transition: transform 0.12s ease, filter 0.2s ease, opacity 0.2s ease !important;
+  white-space: normal !important;
+  text-align: center !important;
+  height: auto !important;
 }
 
 .pgcal-container .pgcal-add-btn[data-mode="copy"] {
@@ -710,14 +714,16 @@ body .tippy-box {
     display: block !important;
     width: 100% !important;
     min-width: auto !important;
+    font-size: 12px !important;
     font-weight: 600 !important;
     color: #666 !important;
-    padding: 4px 0 2px 0 !important;
+    padding: 4px 0 2px 16px !important;
   }
   
   .fc-list-table .fc-list-event-title {
     display: block !important;
     width: 100% !important;
+    font-size: 13px !important;
     padding: 2px 0 6px 0 !important;
   }
   
@@ -731,6 +737,86 @@ body .tippy-box {
     display: block !important;
     width: 100% !important;
     padding: 0 !important;
+  }
+
+  .fc-list-event {
+    padding-right: 132px !important;
+  }
+
+  .fc-list-event .pgcal-add-btn-wrap {
+    position: absolute !important;
+    right: 8px !important;
+    top: 8px !important;
+    margin-top: 0 !important;
+  }
+
+  .fc-list-event .pgcal-add-btn {
+    max-width: 110px !important;
+    white-space: normal !important;
+    text-align: center !important;
+    padding: 4px 8px !important;
+  }
+
+  .pgcal-container .fc-list-event .fc-list-event-dot {
+    left: 4px !important;
+    top: 6px !important;
+    margin-top: 0 !important;
+  }
+}
+
+@container (max-width: 520px) {
+  /* Narrow containers - stack time above title */
+  .fc-list-table .fc-list-event-time {
+    display: block !important;
+    width: 100% !important;
+    min-width: auto !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #666 !important;
+    padding: 4px 0 2px 16px !important;
+  }
+  
+  .fc-list-table .fc-list-event-title {
+    display: block !important;
+    width: 100% !important;
+    font-size: 13px !important;
+    padding: 2px 0 6px 0 !important;
+  }
+  
+  .fc-list-table tr {
+    display: block !important;
+    border-bottom: 1px solid #eee !important;
+    margin-bottom: 8px !important;
+  }
+  
+  .fc-list-table td {
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .fc-list-event {
+    padding-right: 132px !important;
+  }
+
+  .fc-list-event .pgcal-add-btn-wrap {
+    position: absolute !important;
+    right: 8px !important;
+    top: 8px !important;
+    margin-top: 0 !important;
+  }
+
+  .fc-list-event .pgcal-add-btn {
+    max-width: 110px !important;
+    white-space: normal !important;
+    text-align: center !important;
+    padding: 4px 8px !important;
+  }
+
+  .pgcal-container .fc-list-event .fc-list-event-dot {
+    left: 4px !important;
+    top: 6px !important;
+    margin-top: 0 !important;
   }
 }
 
@@ -952,6 +1038,35 @@ body .tippy-box {
   }
 }
 
+@container (max-width: 520px) {
+  .pgcal-container {
+    min-width: 0 !important;
+  }
+
+  .pgcal-container .fc-toolbar {
+    gap: 6px !important;
+  }
+
+  .pgcal-container .fc-toolbar-title {
+    font-size: 15px !important;
+    line-height: 1.2 !important;
+    text-align: center !important;
+  }
+
+  .pgcal-container .fc-button {
+    padding: 3px 6px !important;
+    font-size: 10px !important;
+  }
+
+  .pgcal-container .fc-daygrid-day-number {
+    font-size: 12px !important;
+  }
+
+  .pgcal-container .fc-daygrid-event {
+    margin: 1px 0 !important;
+  }
+}
+
 @media (max-width: 360px) {
   .pgcal-container .fc-toolbar-title {
     font-size: 13px !important;
@@ -970,6 +1085,30 @@ body .tippy-box {
 
   .pgcal-map-title {
     font-size: 22px !important;
+  }
+
+  .pgcal-container .pgcal-add-btn {
+    font-size: 10px !important;
+    padding: 4px 8px !important;
+    line-height: 1.15 !important;
+    white-space: normal !important;
+  }
+}
+
+@container (max-width: 360px) {
+  .pgcal-container .fc-toolbar-title {
+    font-size: 13px !important;
+  }
+
+  .pgcal-container .fc-button-group {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 4px !important;
+  }
+
+  .pgcal-container .fc-col-header-cell .fc-col-header-cell-cushion {
+    font-size: 11px !important;
   }
 
   .pgcal-container .pgcal-add-btn {

@@ -178,6 +178,7 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
       if (!eventId || !eventTitle) return;
 
       const btnContainer = document.createElement('div');
+      btnContainer.className = 'pgcal-add-btn-wrap';
       btnContainer.style.cssText = 'margin-top:4px;display:flex;align-items:center;gap:8px;';
 
       const btn = document.createElement('button');

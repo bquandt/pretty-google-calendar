@@ -514,6 +514,7 @@
    */
   public function pgcal_oauth_instructions_callback() {
     $redirect_uri = admin_url('admin-post.php?action=pgcal_google_callback');
+    $javascript_origin = home_url('');
 
     echo '<div class="pgcal-oauth-fields">';
 
@@ -524,19 +525,19 @@
 
     echo '<ol style="margin-left: 18px;">';
     echo '<li>Go to the <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer">Google Cloud Console</a> and create a new project.</li>';
-    echo '<li>Open <strong>APIs &amp; Services</strong> → <strong>Library</strong>, then enable the <strong>Google Calendar API</strong> for that project.</li>';
-    echo '<li>Open <strong>OAuth consent screen</strong>, choose <strong>External</strong>, and fill in the required fields (app name, support email, developer contact email). Save and continue <em>without manually adding scopes</em>.</li>';
-    echo '<li>If the app is in <strong>Testing</strong> mode, add the Google account(s) you will use to connect calendars as <strong>Test users</strong>.</li>';
-    echo '<li>Go to <strong>Credentials</strong> → <strong>Create Credentials</strong> → <strong>OAuth client ID</strong>.</li>';
-    echo '<li>Select <strong>Web application</strong>, then add this <strong>Authorized redirect URI</strong> exactly:</li>';
+    echo '<li>Open <strong>APIs &amp; Services</strong> → <strong>Library</strong>, then enable the <strong>Google Calendar API</strong> AND <strong>Google Maps JavaScript API</strong> for that project.</li>';
+    echo '<li>Open <strong>APIs &amp; Services</strong> → <strong>OAuth consent screen</strong>, choose <strong>External</strong>, and fill in the required fields (app name, support email, developer contact email). Save and continue <em>without manually adding scopes</em>.</li>';
+    echo '<li>If the app is in <strong>Testing</strong> mode, add the Google account(s) you will use to connect calendars as <strong>Test users</strong>.</li>. Do this clicking <strong> Audiences</strong> → <strong>Test users</strong> → <strong>Add users</strong>. You can add any Gmail address, but make sure to use the same one(s) when connecting calendars in WordPress.</li>';
+    echo '<li>Go to <strong>APIs &amp; Services</strong> → <strong>Credentials</strong> → <strong>Create Credentials</strong> → <strong>OAuth client ID</strong>.</li>';
+    echo '<li>Select <strong>Web application</strong>, then add this <strong>Authorized javascript origin, and redirect URI (respectively)</strong> exactly:</li>';
     echo '</ol>';
-
+    echo '<p style="margin: 8px 0 0 0;"><code style="display:inline-block; padding: 6px 8px; background:#f6f7f7; border:1px solid #dcdcde; border-radius:4px;">' . esc_html($javascript_origin) . '</code></p>';    
     echo '<p style="margin: 8px 0 0 0;"><code style="display:inline-block; padding: 6px 8px; background:#f6f7f7; border:1px solid #dcdcde; border-radius:4px;">' . esc_html($redirect_uri) . '</code></p>';
 
     echo '<ol start="7" style="margin-left: 18px; margin-top: 10px;">';
     echo '<li>After creating the client, copy the generated <strong>Client ID</strong> and <strong>Client Secret</strong>.</li>';
     echo '<li>Return to WordPress → <strong>Settings</strong> → <strong>Pretty Google Calendar</strong>, paste the Client ID and Client Secret into the fields below, and save.</li>';
-    echo '<li>Click <strong>Connect Google Calendar</strong>, sign in with the desired Google account, approve permissions, and confirm the status shows <strong>Connected</strong>.</li>';
+    echo '<li>Click <strong>Connect Google Calendar</strong>, sign in with the desired Google account, approve permissions, and confirm the status shows <strong>Connected</strong>. Then click save again.</li>';
     echo '</ol>';
 
     echo '<p style="margin-bottom:0;">Once connected, the plugin will securely store the refresh token and automatically handle access-token refreshes—no additional WordPress configuration required.</p>';

@@ -1341,7 +1341,9 @@ function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null
     console.log('[pgcal_addToCalendar] Using default calendar ID (primary), PHP will extract from composite ID if needed');
   }
 
-  const requestBody = `action=pgcal_add_to_calendar&event_id=${encodeURIComponent(eventId)}&calendar_id=${encodeURIComponent(calendarId)}&resend=${isResend ? '1' : '0'}`;
+  const attendeeEmail = window.pgcaluser_email || '';
+  console.log('[pgcal_addToCalendar] Detected logged in attendee email:', attendeeEmail);
+  const requestBody = `action=pgcal_add_to_calendar&event_id=${encodeURIComponent(eventId)}&calendar_id=${encodeURIComponent(calendarId)}&attendee_email=${encodeURIComponent(attendeeEmail)}&resend=${isResend ? '1' : '0'}`;
   // console.log('[pgcal_addToCalendar] Sending AJAX request to:', pgcal_vars.ajaxurl);
   // console.log('[pgcal_addToCalendar] Request body:', requestBody);
 

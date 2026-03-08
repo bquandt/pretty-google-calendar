@@ -361,7 +361,13 @@ if (!pgcal_oauth_enabled()) {
       throw new Exception($patch_res->get_error_message());
     }
 
+    $patch_status = wp_remote_retrieve_response_code($patch_res);
     $updated = json_decode(wp_remote_retrieve_body($patch_res), true);
+
+    if ($patch_status < 200 || $patch_status >= 300) {
+      $google_error = $updated['error']['message'] ?? ($updated['error']['errors'][0]['message'] ?? 'Unknown Google API error');
+      throw new Exception('Google Calendar PATCH failed (' . $patch_status . '): ' . $google_error);
+    }
 
     wp_send_json_success([
       'message' => $isResend ? 'Invite resent successfully!' : 'Successfully added to calendar event!',

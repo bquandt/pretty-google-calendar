@@ -234,6 +234,19 @@
   color: var(--pgcal-primary-color) !important;
 }
 
+.pgcal-container .fc-list-event .fc-list-event-title {
+  position: relative !important;
+  padding-right: 44px !important;
+  padding-bottom: 20px !important;
+}
+
+.pgcal-container .fc-list-event .fc-list-event-title .pgcal-add-btn-wrap {
+  position: absolute !important;
+  right: 4px !important;
+  bottom: 4px !important;
+  margin-top: 0 !important;
+}
+
 .pgcal-container .fc-list-event-time {
   white-space: nowrap !important;
   padding: 4px 8px 4px 0 !important;
@@ -797,14 +810,17 @@ body .tippy-box {
   }
 
   .fc-list-event {
-    padding-right: 132px !important;
+    padding-right: 0 !important;
   }
 
-  .fc-list-event .pgcal-add-btn-wrap {
-    position: absolute !important;
+  .fc-list-event .fc-list-event-title {
+    padding-right: 56px !important;
+    padding-bottom: 24px !important;
+  }
+
+  .fc-list-event .fc-list-event-title .pgcal-add-btn-wrap {
     right: 8px !important;
-    top: 8px !important;
-    margin-top: 0 !important;
+    bottom: 6px !important;
   }
 
   .fc-list-event .pgcal-add-btn {
@@ -853,14 +869,17 @@ body .tippy-box {
   }
 
   .fc-list-event {
-    padding-right: 132px !important;
+    padding-right: 0 !important;
   }
 
-  .fc-list-event .pgcal-add-btn-wrap {
-    position: absolute !important;
+  .fc-list-event .fc-list-event-title {
+    padding-right: 56px !important;
+    padding-bottom: 24px !important;
+  }
+
+  .fc-list-event .fc-list-event-title .pgcal-add-btn-wrap {
     right: 8px !important;
-    top: 8px !important;
-    margin-top: 0 !important;
+    bottom: 6px !important;
   }
 
   .fc-list-event .pgcal-add-btn {

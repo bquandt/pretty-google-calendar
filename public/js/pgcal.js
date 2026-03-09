@@ -238,7 +238,13 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
         btn.setAttribute('data-event-url', eventUrl);
 
         btnContainer.appendChild(btn);
-        info.el.appendChild(btnContainer);
+        const isListView = info.view?.type?.startsWith('list') || info.el.classList.contains('fc-list-event');
+        const listTitleCell = isListView ? info.el.querySelector('.fc-list-event-title') : null;
+        if (listTitleCell) {
+          listTitleCell.appendChild(btnContainer);
+        } else {
+          info.el.appendChild(btnContainer);
+        }
 
         // Check attendee status asynchronously
         (async () => {
@@ -290,7 +296,13 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
         btn.setAttribute('data-end', (event.end || event.start).toISOString());
 
         btnContainer.appendChild(btn);
-        info.el.appendChild(btnContainer);
+        const isListView = info.view?.type?.startsWith('list') || info.el.classList.contains('fc-list-event');
+        const listTitleCell = isListView ? info.el.querySelector('.fc-list-event-title') : null;
+        if (listTitleCell) {
+          listTitleCell.appendChild(btnContainer);
+        } else {
+          info.el.appendChild(btnContainer);
+        }
       }
     },
 

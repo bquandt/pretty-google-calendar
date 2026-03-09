@@ -1,8 +1,9 @@
 /* CSS Variables for Color Customization - Default Values */
 .pgcal-container {
-  --pgcal-primary-color: #4285f4;
-  --pgcal-accent-color: #34a853;
+  --pgcal-primary-color: #90da19;
+  --pgcal-accent-color: #dfde83;
   --pgcal-primary-hover: #3367d6;
+  --pgcal-list-header-bg: #ffffff;
 }
 
 /* FullCalendar Button Color Overrides */
@@ -61,8 +62,8 @@
 
 /* FullCalendar Day Grid Today Highlighting */
 .pgcal-container .fc-day-today {
-  background-color: var(--pgcal-accent-color) !important;
-  opacity: 0.3 !important;
+  background-color: var(--pgcal-list-header-bg) !important;
+  opacity: 1 !important;
 }
 
 /* FullCalendar Day Headers (Mon, Tue, Wed, etc.) */
@@ -360,11 +361,12 @@
 }
 
 /* Ensure list header is sticky when scrolling */
+/* This is to tweak the sticky header appearance of the Day/Month/date headers */
 .pgcal-container .fc-list-sticky .fc-list-day-cushion {
   position: sticky !important;
   top: 0 !important;
-  background: #f8f9fa !important;
-  border-bottom: 2px solid #dee2e6 !important;
+  background: var(--pgcal-list-header-bg) !important;
+  border-bottom: 2px solid var(--pgcal-list-header-bg) !important;
   z-index: 10 !important;
   padding: 8px 12px !important;
   font-weight: 600 !important;
@@ -375,6 +377,20 @@
 .pgcal-container .fc-list-day-cushion {
   color: var(--pgcal-primary-color) !important;
   font-weight: 600 !important;
+}
+
+
+/* List view header columns (testing colors) */
+.pgcal-container .fc-list-day-cushion .fc-list-day-side-text {
+  background: #ffe08a !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+}
+
+.pgcal-container .fc-list-day-cushion .fc-list-day-text {
+  background: #9ad1ff !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
 }
 
 /* FullCalendar List View Individual Event Dates - Comprehensive Coverage */

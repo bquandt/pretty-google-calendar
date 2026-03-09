@@ -57,6 +57,47 @@ async function pgcalGetCurrentUserEmail(ajaxurl) {
   }
 }
 
+window.pgcalAddButtonIcons = window.pgcalAddButtonIcons || {
+  copy: '<svg class="pgcal-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><path d="M480 400L288 400C279.2 400 272 392.8 272 384L272 128C272 119.2 279.2 112 288 112L421.5 112C425.7 112 429.8 113.7 432.8 116.7L491.3 175.2C494.3 178.2 496 182.3 496 186.5L496 384C496 392.8 488.8 400 480 400zM288 448L480 448C515.3 448 544 419.3 544 384L544 186.5C544 169.5 537.3 153.2 525.3 141.2L466.7 82.7C454.7 70.7 438.5 64 421.5 64L288 64C252.7 64 224 92.7 224 128L224 384C224 419.3 252.7 448 288 448zM160 192C124.7 192 96 220.7 96 256L96 512C96 547.3 124.7 576 160 576L352 576C387.3 576 416 547.3 416 512L416 496L368 496L368 512C368 520.8 360.8 528 352 528L160 528C151.2 528 144 520.8 144 512L144 256C144 247.2 151.2 240 160 240L176 240L176 192L160 192z"/></svg>',
+  invite: '<svg class="pgcal-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><path d="M112 128C85.5 128 64 149.5 64 176C64 191.1 71.1 205.3 83.2 214.4L291.2 370.4C308.3 383.2 331.7 383.2 348.8 370.4L556.8 214.4C568.9 205.3 576 191.1 576 176C576 149.5 554.5 128 528 128L112 128zM64 260L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 260L377.6 408.8C343.5 434.4 296.5 434.4 262.4 408.8L64 260z"/></svg>',
+  resend: '<svg class="pgcal-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><path d="M64 176C64 149.5 85.5 128 112 128L528 128C554.5 128 576 149.5 576 176L576 257.4C551.6 246.2 524.6 240 496 240C408.3 240 334.3 298.8 311.3 379.2C304.2 377.9 297.2 375 291.2 370.4L83.2 214.4C71.1 205.3 64 191.1 64 176zM304 432C304 460.6 310.2 487.6 321.4 512L128 512C92.7 512 64 483.3 64 448L64 260L262.4 408.8C275 418.2 289.3 424.2 304.1 426.7C304.1 428.5 304 430.2 304 432zM352 432C352 352.5 416.5 288 496 288C575.5 288 640 352.5 640 432C640 511.5 575.5 576 496 576C416.5 576 352 511.5 352 432zM553.4 371.1C546.3 365.9 536.2 367.5 531 374.6L478 447.5L451.2 420.7C445 414.5 434.8 414.5 428.6 420.7C422.4 426.9 422.4 437.1 428.6 443.3L468.6 483.3C471.9 486.6 476.5 488.3 481.2 487.9C485.9 487.5 490.1 485.1 492.9 481.4L556.9 393.4C562.1 386.3 560.5 376.2 553.4 371.1z"/></svg>'
+};
+
+window.pgcalAddButtonLabels = window.pgcalAddButtonLabels || {
+  copy: 'Copy to Calendar',
+  invite: '+ Invite Me',
+  resend: 'Resend Invite'
+};
+
+window.pgcal_setAddButtonIcon = window.pgcal_setAddButtonIcon || function (button, state, labelOverride) {
+  const label = labelOverride || window.pgcalAddButtonLabels[state] || window.pgcalAddButtonLabels.invite;
+  const icon = window.pgcalAddButtonIcons[state] || window.pgcalAddButtonIcons.invite;
+  button.innerHTML = icon;
+  button.setAttribute('title', label);
+  button.setAttribute('aria-label', label);
+};
+
+function pgcal_showToast(message, type = 'info', duration = 3000) {
+  if (!message) return;
+
+  let container = document.querySelector('.pgcal-toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'pgcal-toast-container';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  toast.className = `pgcal-toast pgcal-toast-${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('pgcal-toast-hide');
+    toast.addEventListener('transitionend', () => toast.remove());
+  }, duration);
+}
+
 /**
  * Main function that initializes and renders the FullCalendar with Google Calendar events and tooltips.
  * @param {object} pgcalSettings Plugin settings
@@ -188,7 +229,7 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
       // BRANCHING LOGIC BASED ON LOGIN + OAUTH STATUS
       if (canInvite) {
         // LOGGED IN: Same Show "Invite Me" workflow
-        btn.textContent = 'Checking…';
+        window.pgcal_setAddButtonIcon(btn, 'invite', 'Checking...');
         btn.disabled = true;
         btn.setAttribute('data-mode', 'invite');
         btn.setAttribute('data-event-id', eventId);
@@ -218,18 +259,18 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
             const result = await response.json();
 
             if (result?.data?.isAttendee) {
-              btn.textContent = 'Resend Invite';
+              window.pgcal_setAddButtonIcon(btn, 'resend');
               btn.setAttribute('data-resend', 'true'); //-flag as resend for later use
               btn.style.background = '#34a853';
             } else {
-              btn.textContent = '+ Invite Me';
+              window.pgcal_setAddButtonIcon(btn, 'invite');
               btn.setAttribute('data-resend', 'false');
             }
 
             btn.disabled = false;
           } catch (err) {
             console.error('Attendee check failed:', err);
-            btn.textContent = '+ Invite Me';
+            window.pgcal_setAddButtonIcon(btn, 'invite');
             btn.disabled = false;
             btn.setAttribute('data-resend', 'false');
           }
@@ -237,7 +278,7 @@ async function pgcal_render_calendar(pgcalSettings, ajaxurl) {
 
       } else {
         // NOT LOGGED IN: Show "Copy to Calendar" (fallback URL)
-        btn.textContent = 'Copy to Calendar';
+        window.pgcal_setAddButtonIcon(btn, 'copy');
         btn.style.background = '#ff9800';
         btn.disabled = false;
         btn.setAttribute('data-mode', 'copy');
@@ -539,10 +580,10 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
           let buttonHTML = '';
           if (canInvite) {
             // LOGGED IN: Show invite button with async attendee checking
-            buttonHTML = `<button class="pgcal-add-btn" data-event-id="${eventId}" data-event-url="${event.url || ''}" data-location="${location}" data-event-title="${event.title}" data-calendar-id="${event.source?.id || event.source?.googleCalendarId || ''}" data-mode="invite" data-resend="false" style="display: inline-block; padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background 0.3s;" disabled>Checking...</button>`;
+            buttonHTML = `<button class="pgcal-add-btn" data-event-id="${eventId}" data-event-url="${event.url || ''}" data-location="${location}" data-event-title="${event.title}" data-calendar-id="${event.source?.id || event.source?.googleCalendarId || ''}" data-mode="invite" data-resend="false" style="display: inline-block; padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background 0.3s;" title="Checking..." aria-label="Checking..." disabled>${window.pgcalAddButtonIcons.invite}</button>`;
           } else {
             // NOT LOGGED IN: Show copy to calendar button (no async checking)
-            buttonHTML = `<button class="pgcal-add-btn" data-event-id="${eventId}" data-event-url="${event.url || ''}" data-location="${location}" data-event-title="${event.title}" data-start="${event.start.toISOString()}" data-end="${(event.end || event.start).toISOString()}" data-mode="copy" style="display: inline-block; padding: 10px 20px; background: #ff9800; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background 0.3s;">Copy to Calendar</button>`;
+            buttonHTML = `<button class="pgcal-add-btn" data-event-id="${eventId}" data-event-url="${event.url || ''}" data-location="${location}" data-event-title="${event.title}" data-start="${event.start.toISOString()}" data-end="${(event.end || event.start).toISOString()}" data-mode="copy" style="display: inline-block; padding: 10px 20px; background: #ff9800; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background 0.3s;" title="${window.pgcalAddButtonLabels.copy}" aria-label="${window.pgcalAddButtonLabels.copy}">${window.pgcalAddButtonIcons.copy}</button>`;
           }
 
           // Create info window - this is bascially the popup content on the map: https://developers.google.com/maps/documentation/javascript/infowindows
@@ -613,20 +654,17 @@ function pgcal_addEventMarkersToMap(map, calendar, pgcalSettings) {
               const isAttendee = json.success && json.data.isAttendee;
 
               if (isAttendee) {
-                popupBtn.textContent = 'Resend Invite';
-                popupBtn.title = 'You are already an attendee - resend invitation';
+                window.pgcal_setAddButtonIcon(popupBtn, 'resend');
                 popupBtn.style.background = '#34a853';
                 popupBtn.setAttribute('data-resend', 'true');  // SET TRUE
               } else {
-                popupBtn.textContent = '+ Invite Me';
-                popupBtn.title = 'Add yourself as an attendee';
+                window.pgcal_setAddButtonIcon(popupBtn, 'invite');
                 popupBtn.setAttribute('data-resend', 'false');  // force FALSE
               }
               popupBtn.disabled = false;
             } catch (error) {
               console.error('Error updating map popup button:', error);
-              popupBtn.textContent = '+ Invite Me';
-              popupBtn.title = 'Add yourself as an attendee';
+              window.pgcal_setAddButtonIcon(popupBtn, 'invite');
               popupBtn.setAttribute('data-resend', 'false');  // DEFAULT TO FALSE ON ERROR
               popupBtn.disabled = false;
             }
@@ -1323,9 +1361,8 @@ function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null
   // Show loading state
   btn.disabled = true;
   btn.style.opacity = '0.7';
-  statusEl.style.display = 'inline';
-  statusEl.textContent = 'Inviting...';
-  statusEl.style.color = '#ff9800';
+  statusEl.style.display = 'none';
+  pgcal_showToast('Inviting...', 'info');
 
   // Extract calendar ID from event URL if available (format: https://www.google.com/calendar/event?eid=COMPOSITE_ID&cid=CALENDAR_ID)
   let calendarId = 'primary';
@@ -1375,10 +1412,9 @@ function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null
       if (data.success) {
         console.log('[pgcal_addToCalendar] API call succeeded!');
         // API call succeeded
-        statusEl.textContent = '✓ Invited! Check your email.';
-        statusEl.style.color = '#4caf50';
+        pgcal_showToast('Invited! Check your email.', 'success');
         btn.style.background = '#4caf50';
-        btn.textContent = 'Resend Invite';
+        window.pgcal_setAddButtonIcon(btn, 'resend');
         btn.setAttribute('data-resend', 'true'); //crucial set resend flag
 
         setTimeout(() => {
@@ -1411,8 +1447,8 @@ function pgcal_addToCalendar(event, calendarUrls, pgcalSettings, statusEl = null
  * @returns {void}
  */
 function pgcal_addToCalendarFallback(calendarUrls, statusEl, btn) {
-  statusEl.textContent = '✓ Opening calendar...';
-  statusEl.style.color = '#4caf50';
+  statusEl.style.display = 'none';
+  pgcal_showToast('Opening calendar...', 'success');
   btn.style.background = '#4caf50';
 
   // Open Google Calendar template in new tab
@@ -1530,11 +1566,12 @@ function handleCopyMode(btn, eventTitle, location, eventUrl) {
   window.open(calendarUrls.google, '_blank');
 
   // Visual feedback
-  btn.textContent = '✓ Opening...';
+  window.pgcal_setAddButtonIcon(btn, 'copy', 'Opening...');
+  pgcal_showToast('Opening calendar...', 'success');
   btn.style.background = '#34a853';
 
   setTimeout(() => {
-    btn.textContent = 'Copy to Calendar';
+    window.pgcal_setAddButtonIcon(btn, 'copy');
     btn.style.background = '#ff9800';
     btn.disabled = false;
     btn.style.opacity = '1';
